@@ -71,7 +71,7 @@ void dump_bigtable() {
   };
 };
 
-static inline uint64_t lookup_bigtable(uint32_t index) {
+uint64_t lookup_bigtable(uint32_t index) {
   if (index < bigtable_index || TOO_BIG == index)
     ;
   else {
@@ -81,7 +81,7 @@ static inline uint64_t lookup_bigtable(uint32_t index) {
   return decode(bigtable[index]);
 };
 
-static inline uint32_t lookup_RIB(uint8_t l, uint32_t address) {
+uint32_t lookup_RIB(uint8_t l, uint32_t address) {
 
   uint32_t index = encode(l, address);
   assert(index < RIBSIZE);
@@ -94,7 +94,7 @@ static inline uint32_t lookup_RIB(uint8_t l, uint32_t address) {
   return btindex;
 };
 
-static inline uint32_t lookup_RIB64(uint64_t la) {
+uint32_t lookup_RIB64(uint64_t la) {
   if (25 > (la >> 32))
     return lookup_RIB(la >> 32, la & 0xffffffff);
   else {

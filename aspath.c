@@ -1,6 +1,6 @@
 #include "include.h"
 
-static inline uint8_t as_path_count(void *p, uint16_t length) {
+uint8_t as_path_count(void *p, uint16_t length) {
 
   uint16_t offset = 0;
   uint16_t path_count = 0;

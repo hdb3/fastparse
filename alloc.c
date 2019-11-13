@@ -205,7 +205,7 @@ void reinit_alloc() {
   reinit_alloc_small();
 };
 
-static inline void dalloc(void *p) {
+void dalloc(void *p) {
   LIMITCHECK(p);
   if (ISLARGE(p))
     dalloc_large(p);
@@ -213,7 +213,7 @@ static inline void dalloc(void *p) {
     dalloc_small(p);
 };
 
-static inline void *alloc(size_t sz) {
+void *alloc(size_t sz) {
   assert(LARGE >= sz);
   if (SMALL < sz)
     return alloc_large();

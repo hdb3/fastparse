@@ -18,6 +18,7 @@
 #include "libupdates2.h"
 #include "nlri2.h"
 #include "alloc.h"
+#include "aspath.h"
 #include "timespec.h"
 #include "bigtable.h"
 #include "locrib.h"

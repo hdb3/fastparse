@@ -71,7 +71,7 @@ static inline void parse_attribute(uint8_t type_code, void *p, uint16_t length, 
     }
 };
 
-static inline void parse_attributes(void *p, uint16_t length, struct route *r) {
+void parse_attributes(void *p, uint16_t length, struct route *r) {
   void *limit = p + length;
   uint8_t flags, type_code;
   uint16_t attr_length;

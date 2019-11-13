@@ -9,7 +9,7 @@
 #define _LR_NULL_ROUTE SND32
 #define _LR_INDEX_MASK 0x3fffffff
 
-extern struct route **LOCRIB=NULL;
+extern struct route **LOCRIB;
 
 void locrib_init();
 

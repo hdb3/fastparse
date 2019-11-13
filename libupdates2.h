@@ -14,7 +14,7 @@ struct tiebreak {
   uint32_t peer_address;
 };
 
-int tiebreaker (struct tiebreak *a, struct tiebreak *b){
+static inline int tiebreaker (struct tiebreak *a, struct tiebreak *b){
  return (0 != memcmp (a,b,sizeof(struct tiebreak)));
 };
 
