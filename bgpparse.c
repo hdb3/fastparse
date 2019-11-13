@@ -1,29 +1,4 @@
-/*
-#define _GNU_SOURCE
-#include <arpa/inet.h>
-#include <assert.h>
-#include <fcntl.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <time.h>
-#include <unistd.h>
-*/
 #include "include.h"
-
-#include "alloc.c"
-#include "bgpupdate.c"
-//#include "bgpserialize.c"
-#include "bigtable.c"
-#include "locrib.c"
-#include "phase1.c"
-#include "getw.h"
-#include "nlri2.h"
-#include "timespec.h"
 
 int too_long = 0;
 uint64_t unique = 0;

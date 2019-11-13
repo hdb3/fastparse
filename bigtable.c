@@ -1,8 +1,5 @@
-#ifndef __BIGTABLE_C
-#define __BIGTABLE_C
 #include "include.h"
 
-#include "getw.h"
 
 /*
  *  explanation:
@@ -33,9 +30,6 @@ void print_prefix64(uint64_t la) {
   print_prefix(la >> 32, la & 0xffffffff);
 };
 
-#define BIG 1000000
-#define TOO_BIG (BIG + 1)
-#define RIBSIZE (2 << 25)
 static inline uint32_t encode(uint8_t l, uint32_t a) {
   assert(l < 25);
   return (uint32_t)((uint64_t)(0x100000000LL | (uint64_t)a) >> (32 - l));
@@ -53,7 +47,7 @@ static inline uint32_t encode64(uint64_t la) {
 
 static uint32_t *RIB;
 static uint32_t *bigtable;
-static uint32_t bigtable_index = 0;
+uint32_t bigtable_index = 0;
 
 void reinit_bigtable() {
   bigtable_index = 0;
@@ -107,4 +101,3 @@ static inline uint32_t lookup_RIB64(uint64_t la) {
     return TOO_BIG;
   };
 };
-#endif

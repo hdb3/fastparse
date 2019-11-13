@@ -1,20 +1,4 @@
-#ifndef __ALLOC_C
-#define __ALLOC_C
-
-#include <assert.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <sys/mman.h>
-
-#define LARGE (4096 + 128)
-// LARGE_MAX is 1M
-#define LARGE_MAX 1000000LL
-
-#define SMALL (256)
-// SMALL_MAX is 10M
-#define SMALL_MAX 40000000LL
+#include "include.h"
 
 void * small_buf = NULL;
 void * large_buf = NULL;
@@ -240,5 +224,3 @@ static inline void *alloc(size_t sz) {
 void report_route_table () {
   printf("route table size = %d (%d/%d)\n", small_index + large_index, small_index, large_index);
 };
-
-#endif

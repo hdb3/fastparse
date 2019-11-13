@@ -1,7 +1,4 @@
-#include "libupdates2.h"
-#include "bigtable.c"
-#include "locribjournal.c"
-void schedule_phase3();
+#include "include.h"
 
 /*
  * this is the unoptimised version of locrib hich demonstrates performance for the
@@ -11,15 +8,6 @@ void schedule_phase3();
  *
 */
 
-#define TOP64 0x8000000000000000
-
-#define TOP32 0x80000000
-#define SND32 0x40000000
-
-#define _LR_EOB TOP32
-#define _LR_NULL_ROUTE SND32
-#define _LR_INDEX_MASK 0x3fffffff
-
 struct route **LOCRIB=NULL;
 
 void locrib_init() {
@@ -27,11 +15,6 @@ void locrib_init() {
   locribj_init();
 };
 
-
-#define ISSET64(route) (TOP64 & (uint64_t) route)
-#define ISNOTSET64(route) (!(ISSET64(route)))
-#define CLEAR64(route) (~TOP64 & (uint64_t) route)
-#define SET64(route) (TOP64 | (uint64_t) route)
 
 /*
  * there are some critical scheduling issues in this function:
@@ -68,6 +51,4 @@ void locrib(uint32_t address, struct route *new) {
   if (_LR_EOB & address)
     schedule_phase3();  // this is the point at which input processing for this route can stop
                         //  and start work on other update messages
-
 };
-#include "phase3.c"
