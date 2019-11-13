@@ -1,11 +1,7 @@
 
+#include "include.h"
 #undef __TRAILER__
-#undef __BODY__
-#define __HEADER__
-#include "bgpserialize.tpl"
-#undef __HEADER__
-
-#define __BODY__ ibgpserialize
+#define __BODY__ serialize_ibgp
 #include "bgpserialize.tpl"
 #undef __BODY__
 

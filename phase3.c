@@ -1,12 +1,6 @@
-#ifndef __PHASE3_C
-#define __PHASE3_C
 #include "include.h"
 
-//#include "locrib.c"
-#include "locribjournal.c"
-#include "peergroup.c"
-
-static inline struct route * read_and_clear(uint32_t addrref) {
+struct route * read_and_clear(uint32_t addrref) {
     // read and clear the push flag
     // if the route changes whilst we are working then a new action will be scheduled
     uint_fast64_t* p = (uint_fast64_t*) &LOCRIB[addrref];
@@ -48,4 +42,3 @@ void schedule_phase3() {
     phase3(&peergroups[pix],route,addrreftable,table_index);   
   };
 };
-#endif

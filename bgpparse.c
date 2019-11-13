@@ -1,6 +1,7 @@
 #include "include.h"
 
 int too_long = 0;
+int _msg_count = 0;
 uint64_t unique = 0;
 uint64_t msg_max;
 uint64_t consumed=0;

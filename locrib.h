@@ -19,5 +19,5 @@ void locrib_init();
 #define CLEAR64(route) (~TOP64 & (uint64_t) route)
 #define SET64(route) (TOP64 | (uint64_t) route)
 
-void locrib(uint32_t address, struct route *new);
+extern inline void locrib(uint32_t address, struct route *new);
 #endif

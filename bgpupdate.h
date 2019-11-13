@@ -2,5 +2,5 @@
 #define __BGPUPDATE_H_
 
 // static inline void parse_attribute(uint8_t type_code, void *p, uint16_t length, struct route *route);
-void parse_attributes(void *p, uint16_t length, struct route *r);
+extern inline void parse_attributes(void *p, uint16_t length, struct route *r);
 #endif

@@ -26,7 +26,7 @@ extern void * both_buf;
 
 void init_alloc();
 void reinit_alloc();
-void dalloc(void *p);
-void *alloc(size_t sz);
+extern inline void dalloc(void *p);
+extern inline void *alloc(size_t sz);
 void report_route_table ();
 #endif

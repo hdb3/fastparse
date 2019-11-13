@@ -17,7 +17,7 @@ void print_prefix64(uint64_t la) ;
 void reinit_bigtable() ;
 void init_bigtable() ;
 void dump_bigtable() ;
-uint64_t lookup_bigtable(uint32_t index) ;
-uint32_t lookup_RIB(uint8_t l, uint32_t address) ;
-uint32_t lookup_RIB64(uint64_t la) ;
+extern inline uint64_t lookup_bigtable(uint32_t index) ;
+extern inline uint32_t lookup_RIB(uint8_t l, uint32_t address) ;
+extern inline uint32_t lookup_RIB64(uint64_t la) ;
 #endif

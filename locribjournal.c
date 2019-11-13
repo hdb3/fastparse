@@ -1,8 +1,4 @@
-#ifndef __LRJ_C
-#define __LRJ_C
 #include "include.h"
-#include "bigtable.c"
-
 
 /* locrib journal
  *
@@ -19,11 +15,10 @@
  *
  *
 */
-#define JOURNAL_EMPTY 0xffffffff
 
-uint32_t *_LRJOURNAL;
+static uint32_t *_LRJOURNAL;
 
-uint32_t jread,jwrite;
+static uint32_t jread,jwrite;
 
 void locribj_init() {
   _LRJOURNAL=malloc(BIG*sizeof(uint32_t));
@@ -48,4 +43,3 @@ uint32_t locribj_pull() {
   } else
     return JOURNAL_EMPTY;
 };
-#endif
