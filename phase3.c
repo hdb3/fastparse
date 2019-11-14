@@ -18,7 +18,7 @@ void init_peergroups () {
 };
 */
 
-static uint8_t tx_buffer[4096] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff, 0x02 };
+static uint8_t tx_buffer[4096] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff };
 
 void schedule_phase3() {
   uint32_t addrref;
@@ -28,10 +28,8 @@ void schedule_phase3() {
   uint8_t *txp;
   bool is_withdraw;
   
-
-  addrref = locribj_pull();
-
   printf("enter schedule_phase3\n");
+  addrref = locribj_pull();
   while (JOURNAL_EMPTY != addrref) {
     printf("loop start schedule_phase3\n");
   // loop over potentiall multiple updates in the journal
@@ -62,17 +60,18 @@ void schedule_phase3() {
     uint32_t index;
     uint16_t pix;
 
-    // update structure is 16 byte header 1 byte type 16 bit total length
+    // update structure is 16 byte header 16 bit total length 1 byte type 
     //                     16 bit withdraw length <variable> withdraw prefixes
     //                     16 bit arributes length <variable> arributes
     //                     <variable> update prefixes
+    tx_buffer[18] = 2;
     if (is_withdraw){
       txp = tx_buffer+23;
       for (index=0; index < table_index; index++)
         build_nlri(&txp,lookup_bigtable(addrreftable[index]));
       uint16_t withdraw_length = txp - (tx_buffer+21);
       uint16_t update_length = withdraw_length + 23;
-      putw16(tx_buffer+17,update_length);
+      putw16(tx_buffer+16,update_length);
       putw16(tx_buffer+19,withdraw_length);
       putw16(txp, 0); // path attribute length
 
@@ -90,11 +89,12 @@ void schedule_phase3() {
         for (index=0; index < table_index; index++)
           build_nlri(&txp,lookup_bigtable(addrreftable[index]));
         uint16_t update_length = txp - tx_buffer;
-        putw16(tx_buffer+17,update_length);
+        putw16(tx_buffer+16,update_length);
         assert (update_length == write(peergroups[pix].fd,tx_buffer,update_length));
       };
     };
     printf("loop end schedule_phase3\n");
+    addrref = locribj_pull();
   };
   printf("leave schedule_phase3\n");
 };
