@@ -29,3 +29,4 @@
 #include "bgpupdate.h"
 #include "bgpparse.h"
 #include "peergroup.h"
+#include "disseminate.h"

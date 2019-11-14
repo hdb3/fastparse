@@ -7,19 +7,38 @@ struct route * read_and_clear(uint32_t addrref) {
     uint_fast64_t routeptr = atomic_fetch_xor(p,TOP64);
     return (struct route *) routeptr;
 };
+/*
+int npeergroups = 1;
 
-// void phase3(struct peergroup *peergroup, struct route *route, uint32_t *addrreftable, uint32_t table_index);
+struct peergroup peergroups[1];
+
+void init_peergroups () {
+  int fd = open("/dev/null",O_WRONLY);
+  peergroups[0] = (struct peergroup){ serialize_ibgp , fd };
+};
+*/
+
+static uint8_t tx_buffer[4096] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff, 0x02 };
+
 void schedule_phase3() {
   uint32_t addrref;
-  uint32_t addrreftable [ 4096 ];
+  uint32_t addrreftable [ 2048 ];
   uint16_t table_index;
   struct route * route, *route2;
+  uint8_t *txp;
+  bool is_withdraw;
+  
 
   addrref = locribj_pull();
+
   while (JOURNAL_EMPTY != addrref) {
+  // loop over potentiall multiple updates in the journal
+  // each iteration is marked by an end-of-block flag in the addrref stream
     table_index = 0;
     addrreftable[table_index++] = _LR_INDEX_MASK & addrref;
     route = read_and_clear(_LR_INDEX_MASK & addrref);
+    is_withdraw =  _LR_NULL_ROUTE  & addrref;
+
     while (!(_LR_EOB & addrref)) {
       addrref = locribj_pull();
       addrreftable[table_index++] = _LR_INDEX_MASK & addrref;
@@ -28,17 +47,50 @@ void schedule_phase3() {
                               // allowed but unlikely in unstressed or single thread testing
                               // to be fixed up later.....
     };
+
     assert((JOURNAL_EMPTY != addrref)); // this is a hard assertion
                                        // because the journal should always contain blocks terminated with a marker,
                                        // so hitting the end of the journal on a non terminal addrref
                                        // is either a bug or proof that we need a spinlock (we do really)
                                        // the spin lock would allow journal blocked operations to be atomic
                                        // and also probably remove th eneed for the atomic operation over the active flag
-  // now we have a contiguous block and a single route
-  // we need to call per peergroup ARO functions.
+    // now we have a contiguous block and a single route
+    // we need to call per peergroup ARO functions.
  
-  uint16_t pix;
-  for (pix=0;pix<npeergroups;pix++)
-    phase3(&peergroups[pix],route,addrreftable,table_index);   
+    uint32_t index;
+    uint16_t pix;
+
+    // update structure is 16 byte header 1 byte type 16 bit total length
+    //                     16 bit withdraw length <variable> withdraw prefixes
+    //                     16 bit arributes length <variable> arributes
+    //                     <variable> update prefixes
+    if (is_withdraw){
+      txp = tx_buffer+23;
+      for (index=0; index < table_index; index++)
+        build_nlri(&txp,lookup_bigtable(addrreftable[index]));
+      uint16_t withdraw_length = txp - (tx_buffer+21);
+      uint16_t update_length = withdraw_length + 23;
+      putw16(tx_buffer+17,update_length);
+      putw16(tx_buffer+19,withdraw_length);
+      putw16(txp, 0); // path attribute length
+
+      for (pix=0;pix<npeergroups;pix++)
+        assert (0 == write(peergroups[pix].fd,tx_buffer,update_length));
+
+    } else {
+      putw16(tx_buffer+19,0); // withdrwa length zero for all updates
+      for (pix=0;pix<npeergroups;pix++) {
+	struct peergroup *pg = &peergroups[pix];
+        txp = tx_buffer+23;
+        pg->serialize(route,&txp,4064);
+        uint16_t attribute_length = txp - (tx_buffer+23);
+        putw16(tx_buffer+21, attribute_length);
+        for (index=0; index < table_index; index++)
+          build_nlri(&txp,lookup_bigtable(addrreftable[index]));
+        uint16_t update_length = txp - tx_buffer;
+        putw16(tx_buffer+17,update_length);
+        assert (0 == write(peergroups[pix].fd,tx_buffer,update_length));
+      };
+    };
   };
 };

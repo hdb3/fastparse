@@ -77,6 +77,7 @@ static inline int nlri_list(void *nlris, uint32_t *pfxs, int limit) {
   return pfxc;
 };
 
+// build_nlri() - the added length is implicitly retuned by incrementing the buffer pointer...
 static inline void build_nlri(uint8_t **nlri, uint64_t prefix){
   uint8_t *p  = *nlri;
 
