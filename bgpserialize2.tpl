@@ -60,6 +60,7 @@ void __BODY__ (struct route *route, uint8_t ** q_base , uint16_t q_max ) {
         attr_length = *r++;
           if (0x10 & flags)
             attr_length = attr_length << 8 | (*r++);
+        attr_ptr = r;
         r += attr_length;
         if ( type_code < wanted_type_code)
 	  continue;
@@ -67,7 +68,6 @@ void __BODY__ (struct route *route, uint8_t ** q_base , uint16_t q_max ) {
           attr_ptr = NULL; // the attribute was not found in the source route
 	  break;
 	} else { // the attribute was found in the source route
-          attr_ptr = r;
 	  break;
 	};
 
