@@ -10,6 +10,11 @@
   copy();
   get(NEXT_HOP);
   copy();
+  // TODO
+  // if the attributes are wrongly ordered then the macine silenetly fails
+  // by copying the previous attribute.....!!!!
+  get(COMMUNITY);
+  copy();
   set4(0x40,LOCAL_PREF,route->tiebreak.local_pref);
 
   *q_base = q;

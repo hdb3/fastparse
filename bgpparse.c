@@ -60,6 +60,9 @@ static inline void parse_update(void *p, uint16_t length) {
   void *path_attributes = p + 4 + withdraw_length;
   void *nlri = p + 4 + withdraw_length + pathattributes_length;
 
+  if (0==nlri_length && 0==withdraw_length) // must be BGP-MP, or EOR
+    return;
+
   _msg_count++;
   /*
   if (12094088 <= _msg_count){
