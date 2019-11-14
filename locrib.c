@@ -37,18 +37,56 @@ void locrib_init() {
  * The stored state (per address) is the pushed bit and another bit for the spin lock
 */
 
-void locrib(uint32_t address, struct route *new) {
+void locrib(uint32_t extended_address, struct route *new) {
 
-  struct route * current = LOCRIB[_LR_INDEX_MASK & address];
+  uint32_t address = _LR_INDEX_MASK & extended_address;
+  void* extended_current = LOCRIB[address];
+  struct route * current = CLEAR64(extended_current);
 
-  if (( (void*) TOP64 == current ) || // the RIB was empty for this address
-                                      // so the tiebreak is not needed....
+  bool eob_flag = _LR_EOB & extended_address;
+  bool push_flag = ISSET64(extended_current);
+
+  if ( ( NULL == current )  || // the RIB was empty for this address
+                               // so the tiebreak is not needed....
       (tiebreaker(&new->tiebreak,&current->tiebreak))) {
-    LOCRIB[_LR_INDEX_MASK & address] = (struct route *) SET64(new);
-    if (ISNOTSET64(current))
-      locribj_push(address);
+    LOCRIB[address] = SET64(new);
+    if (!(push_flag))
+      locribj_push(extended_address);
   };
-  if (_LR_EOB & address)
+
+  if (eob_flag)
     schedule_phase3();  // this is the point at which input processing for this route can stop
                         //  and start work on other update messages
+};
+
+void locrib_withdraw(uint32_t extended_address, struct route *new) {
+
+  uint32_t address = _LR_INDEX_MASK & extended_address;
+  void* extended_current = LOCRIB[address];
+  struct route * current = CLEAR64(extended_current);
+
+  bool eob_flag = _LR_EOB & extended_address;
+  bool push_flag = ISSET64(extended_current);
+
+  if ( NULL == CLEAR64(current ))    // the RIB was empty for this address
+                                     // which should not happen for a withdraw....
+    assert(NULL != CLEAR64(current ));
+
+  else if (current != new) ; // the withdraw is not for the current winner
+                             // the route should still be removed, but no
+			     // route push is needed
+  else                     { // the withdraw is for the current winner
+                             // TODO
+			     // this will trigger full adj-rib-in re-selection
+			     // but for now i just treat as withdraw (stateless)
+
+    LOCRIB[address] = SET64(NULL);
+
+    if (!(push_flag))
+      locribj_push(_LR_NULL_ROUTE | extended_address);
+
+    if (eob_flag)
+      schedule_phase3();  // this is the point at which input processing for this route can stop
+                          //  and start work on other update messages
+  };
 };

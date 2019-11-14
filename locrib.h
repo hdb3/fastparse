@@ -14,10 +14,10 @@ extern struct route **LOCRIB;
 void locrib_init();
 
 
-#define ISSET64(route) (TOP64 & (uint64_t) route)
-#define ISNOTSET64(route) (!(ISSET64(route)))
-#define CLEAR64(route) (~TOP64 & (uint64_t) route)
-#define SET64(route) (TOP64 | (uint64_t) route)
+#define ISSET64(ROUTE) (TOP64 & (uint64_t) ROUTE)
+#define ISNOTSET64(ROUTE) (!(ISSET64(ROUTE)))
+#define CLEAR64(ROUTE) (struct route*)(~TOP64 & (uint64_t) ROUTE)
+#define SET64(ROUTE) ((struct route*)(TOP64 | (uint64_t) ROUTE))
 
 extern inline void locrib(uint32_t address, struct route *new);
 #endif

@@ -167,6 +167,7 @@ int main(int argc, char **argv) {
 
   init_alloc();
   init_bigtable();
+  init_peergroups();
   adj_rib_in = alloc_adj_rib_in();
 
   tmp = clock_gettime(CLOCK_REALTIME, &tstart);
