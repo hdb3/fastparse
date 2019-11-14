@@ -1,3 +1,6 @@
+#ifndef __HEX_H
+#define __HEX_H
+
 static char *toHex(char *buf, int l) {
 
   char hex_str[] = "0123456789abcdef";
@@ -25,4 +28,4 @@ static void printHex(FILE *fd, char *buf, int l) {
   fprintf(fd, "[%s]\n", hex);
   free(hex);
 }
-
+#endif
