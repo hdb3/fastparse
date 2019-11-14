@@ -19,17 +19,15 @@ static inline void update_adj_rib_in(uint32_t addrref, struct route *route) {
 
   uint32_t addrindex = addrref & _LR_INDEX_MASK;  // mask off the overloaded top bits in addrref
 
-/*
   printf("%8ld ",_msg_count);
   print_prefix64(lookup_bigtable(addrindex));
   if (route)
     printf(" route %ld",route->unique);
   else
     printf(" route (nil)");
-  if (_LR_EOB & addrref)
-    printf("EOB");
   printf("\n");
   fflush(stdout);
+/*
 */
 
   struct route * old_route = adj_rib_in[addrindex];

@@ -7,16 +7,6 @@ struct route * read_and_clear(uint32_t addrref) {
     uint_fast64_t routeptr = atomic_fetch_xor(p,TOP64);
     return (struct route *) routeptr;
 };
-/*
-int npeergroups = 1;
-
-struct peergroup peergroups[1];
-
-void init_peergroups () {
-  int fd = open("/dev/null",O_WRONLY);
-  peergroups[0] = (struct peergroup){ serialize_ibgp , fd };
-};
-*/
 
 static uint8_t tx_buffer[4096] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff };
 
@@ -28,10 +18,8 @@ void schedule_phase3() {
   uint8_t *txp;
   bool is_withdraw;
   
-  printf("enter schedule_phase3\n");
   addrref = locribj_pull();
   while (JOURNAL_EMPTY != addrref) {
-    printf("loop start schedule_phase3\n");
   // loop over potentiall multiple updates in the journal
   // each iteration is marked by an end-of-block flag in the addrref stream
     table_index = 0;
@@ -93,8 +81,6 @@ void schedule_phase3() {
         assert (update_length == write(peergroups[pix].fd,tx_buffer,update_length));
       };
     };
-    printf("loop end schedule_phase3\n");
     addrref = locribj_pull();
   };
-  printf("leave schedule_phase3\n");
 };
