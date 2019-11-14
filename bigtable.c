@@ -23,7 +23,7 @@
 
 
 void print_prefix(uint8_t l, uint32_t address) {
-  printf("%s/%d", inet_ntoa((struct in_addr){__bswap_32(address)}),l);
+  printf("%-15s/%d", inet_ntoa((struct in_addr){__bswap_32(address)}),l);
 };
 
 void print_prefix64(uint64_t la) {
@@ -75,7 +75,7 @@ uint64_t lookup_bigtable(uint32_t index) {
   if (index < bigtable_index || TOO_BIG == index)
     ;
   else {
-    printf("** index=%d limit=%d _msg_count=%d\n", index, bigtable_index, _msg_count);
+    printf("** index=%d limit=%d _msg_count=%ld\n", index, bigtable_index, _msg_count);
     assert(index < bigtable_index || TOO_BIG == index);
   };
   return decode(bigtable[index]);

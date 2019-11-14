@@ -68,11 +68,14 @@ void locrib_withdraw(uint32_t extended_address, struct route *new) {
   bool eob_flag = _LR_EOB & extended_address;
   bool push_flag = ISSET64(extended_current);
 
-  if ( NULL == CLEAR64(current ))    // the RIB was empty for this address
+  if ( NULL == CLEAR64(current )) {  // the RIB was empty for this address
                                      // which should not happen for a withdraw....
-    assert(NULL != CLEAR64(current ));
+				     // but if the stream is not a complete session
+				     // it is _highly_ likely
+    // printf("addrref: %d , current %p\n",address,current);
+    // assert(NULL != current );
 
-  else if (current != new) ; // the withdraw is not for the current winner
+  } else if (current != new) ; // the withdraw is not for the current winner
                              // the route should still be removed, but no
 			     // route push is needed
   else                     { // the withdraw is for the current winner

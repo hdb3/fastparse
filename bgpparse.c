@@ -1,7 +1,7 @@
 #include "include.h"
 
 int too_long = 0;
-int _msg_count = 0;
+uint64_t _msg_count = 0;
 uint64_t unique = 0;
 uint64_t msg_max;
 uint64_t consumed=0;
@@ -17,25 +17,30 @@ static inline void zero_adj_rib_in(void*p) {
 
 static inline void update_adj_rib_in(uint32_t addrref, struct route *route) {
 
-/*
-  print_prefix64(lookup_bigtable(addrref));
-  if (route)
-    printf(" route %ld\n",route->unique);
-  else
-    printf(" route (nil)\n");
-*/
   uint32_t addrindex = addrref &= _LR_INDEX_MASK;  // mask off the overloaded top bits in addrref
+
+/*
+  printf("%8ld ",_msg_count);
+  print_prefix64(lookup_bigtable(addrindex));
+  if (route)
+    printf(" route %ld\r",route->unique);
+  else
+    printf(" route (nil)\r");
+  fflush(stdout);
+*/
+
   struct route * old_route = adj_rib_in[addrindex];
   adj_rib_in[addrindex] = route;
-  if (route) {
-    route->use_count++;
-  };
   if (old_route) {
     old_route->use_count--;
     if (0 == old_route->use_count)
       dalloc(old_route);
   };
+  if (route) {
+    route->use_count++;
   locrib(addrref,route);
+  } else
+    locrib_withdraw(addrref,route);
 };
 
 static inline void parse_update(void *p, uint16_t length) {
@@ -52,6 +57,19 @@ static inline void parse_update(void *p, uint16_t length) {
   void *path_attributes = p + 4 + withdraw_length;
   void *nlri = p + 4 + withdraw_length + pathattributes_length;
 
+  _msg_count++;
+  /*
+  if (12094088 <= _msg_count){
+    fprintf(stderr,"update: ");
+    printHex(stderr,p,length);
+    fprintf(stderr,"withdrawn: ");
+    printHex(stderr,withdrawn,withdraw_length);
+    fprintf(stderr,"attributes: ");
+    printHex(stderr,path_attributes,pathattributes_length);
+    fprintf(stderr,"nlri: ");
+    printHex(stderr,nlri,nlri_length);
+  };
+  */
   if (pathattributes_length && nlri_length) {
     route = alloc(length + sizeof(struct route));
     memset(route, 0, sizeof(struct route));
@@ -105,6 +123,7 @@ int msg_parse(void *base, int64_t length) {
   void *ptr, *limit, *msg;
   uint8_t msg_type;
   uint16_t msg_length;
+  // this is a per iteration count - _msg_count is global....
   uint32_t msg_count=0;
 
   ptr = base;

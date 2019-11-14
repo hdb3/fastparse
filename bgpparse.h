@@ -1,1 +1,1 @@
-extern int _msg_count;
+extern uint64_t _msg_count;

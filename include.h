@@ -14,6 +14,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "hex.h"
 #include "getw.h"
 #include "libupdates2.h"
 #include "nlri2.h"
