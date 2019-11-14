@@ -87,7 +87,7 @@ static inline void build_nlri(uint8_t **nlri, uint64_t prefix){
   *(p++) = length;
   while (chunk++ < CHUNKSIZE(length)) {
     *(p++) = (uint8_t) (0xff & address);
-    address >> 8;
+    address = address >> 8;
   };
   *nlri = p;
 };
