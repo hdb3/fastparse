@@ -31,7 +31,9 @@ void schedule_phase3() {
 
   addrref = locribj_pull();
 
+  printf("enter schedule_phase3\n");
   while (JOURNAL_EMPTY != addrref) {
+    printf("loop start schedule_phase3\n");
   // loop over potentiall multiple updates in the journal
   // each iteration is marked by an end-of-block flag in the addrref stream
     table_index = 0;
@@ -75,22 +77,24 @@ void schedule_phase3() {
       putw16(txp, 0); // path attribute length
 
       for (pix=0;pix<npeergroups;pix++)
-        assert (0 == write(peergroups[pix].fd,tx_buffer,update_length));
+        assert (update_length == write(peergroups[pix].fd,tx_buffer,update_length));
 
     } else {
       putw16(tx_buffer+19,0); // withdrwa length zero for all updates
       for (pix=0;pix<npeergroups;pix++) {
 	struct peergroup *pg = &peergroups[pix];
         txp = tx_buffer+23;
-        pg->serialize(route,&txp,4064);
+        pg->serialize(CLEAR64(route),&txp,4064);
         uint16_t attribute_length = txp - (tx_buffer+23);
         putw16(tx_buffer+21, attribute_length);
         for (index=0; index < table_index; index++)
           build_nlri(&txp,lookup_bigtable(addrreftable[index]));
         uint16_t update_length = txp - tx_buffer;
         putw16(tx_buffer+17,update_length);
-        assert (0 == write(peergroups[pix].fd,tx_buffer,update_length));
+        assert (update_length == write(peergroups[pix].fd,tx_buffer,update_length));
       };
     };
+    printf("loop end schedule_phase3\n");
   };
+  printf("leave schedule_phase3\n");
 };

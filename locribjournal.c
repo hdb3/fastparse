@@ -29,6 +29,7 @@ void locribj_init() {
 void locribj_push(uint32_t address){
   // add a journal entry for this address
   assert(JOURNAL_EMPTY != address);
+  printf("[%d] = %x\n",jwrite,address);
   _LRJOURNAL[jwrite++] = address;
   jwrite = jwrite % BIG;
   assert(jwrite != jread);  // that would mean the buffer overran
