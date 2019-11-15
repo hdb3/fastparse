@@ -19,15 +19,16 @@ static inline void update_adj_rib_in(uint32_t addrref, struct route *route) {
 
   uint32_t addrindex = addrref & _LR_INDEX_MASK;  // mask off the overloaded top bits in addrref
 
+/*
   printf("%8ld ",_msg_count);
   print_prefix64(lookup_bigtable(addrindex));
   if (route)
     printf(" route %ld",route->unique);
   else
     printf(" route (nil)");
+
   printf("\n");
   fflush(stdout);
-/*
 */
 
   struct route * old_route = adj_rib_in[addrindex];
@@ -37,11 +38,13 @@ static inline void update_adj_rib_in(uint32_t addrref, struct route *route) {
     if (0 == old_route->use_count)
       dalloc(old_route);
   };
+
   if (route) {
     route->use_count++;
-  locrib(addrref,route);
-  } else
+    locrib(addrref,route);
+  } else if (old_route)
     locrib_withdraw(addrref,route);
+  else ; // withdraw for a route we dont have - don't push this!
 };
 
 static inline void parse_update(void *p, uint16_t length) {
@@ -54,6 +57,7 @@ static inline void parse_update(void *p, uint16_t length) {
   uint16_t pathattributes_length = getw16(p + 2 + withdraw_length);
   uint16_t nlri_length = length - withdraw_length - pathattributes_length - 4;
   assert(length >= 4 + withdraw_length + pathattributes_length); // sanity check
+  assert(4097>length);
   void *withdrawn = p + 2;
   void *path_attributes = p + 4 + withdraw_length;
   void *nlri = p + 4 + withdraw_length + pathattributes_length;
@@ -63,7 +67,8 @@ static inline void parse_update(void *p, uint16_t length) {
 
   _msg_count++;
   /*
-  if (12094088 <= _msg_count){
+  if (4920368 <= _msg_count){
+    fprintf(stderr,"update length: %d  pathattributes length: %d  nlri length %d  withdraw length: %d\n",length, pathattributes_length, nlri_length,withdraw_length);
     fprintf(stderr,"update: ");
     printHex(stderr,p,length);
     fprintf(stderr,"withdrawn: ");

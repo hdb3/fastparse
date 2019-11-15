@@ -3,16 +3,16 @@ void __BODY__ (struct route *route, uint8_t ** q_base , uint16_t q_max ) {
   uint8_t * r_base = (uint8_t*)route + sizeof(struct route);
   uint8_t * r_limit = r_base + route->update_length;
 
-  void * q_limit = *q_base + q_max;
+  uint8_t * q_limit = *q_base + q_max;
 
   uint8_t * q = (uint8_t*) *q_base;
   uint8_t * r = (uint8_t*) r_base;
 
   uint8_t flags, type_code;
   uint16_t attr_length;
-  void *attr_ptr;
+  uint8_t *attr_ptr;
 
-  void set (uint16_t attr_length, uint8_t flags, uint8_t type_code, void *attr_ptr) {
+  void set (uint16_t attr_length, uint8_t flags, uint8_t type_code, uint8_t *attr_ptr) {
     if (attr_length<256) {
       *q++ = flags & ~0x10;
       *q++ = type_code;
@@ -50,27 +50,28 @@ void __BODY__ (struct route *route, uint8_t ** q_base , uint16_t q_max ) {
       memcpy(q,attr_ptr,attr_length);
       q += attr_length;
     };
+    // assert(q < q_limit);
   };
 
   void get (uint8_t wanted_type_code) {
-    while (r<r_limit-2) { // limit -2 because we need at least a following flags and length field too
-      if (r<r_limit-2){
-        flags = *r++;
-        type_code = *r++;
-        attr_length = *r++;
-          if (0x10 & flags)
-            attr_length = attr_length << 8 | (*r++);
-        attr_ptr = r;
-        r += attr_length;
-        if ( type_code < wanted_type_code)
-	  continue;
-        else if ( type_code > wanted_type_code) {
-          attr_ptr = NULL; // the attribute was not found in the source route
-	  break;
-	} else { // the attribute was found in the source route
-	  break;
-	};
 
-      } else attr_ptr = NULL;  // the attribute was not found in the source route (and we reached the end of the route!)
-    };  // on exit the attr_length and attr_ptr are correctly set for this attribute.
+  uint8_t *tmp_attr_ptr;
+  attr_ptr = NULL;  // default outcome
+
+    while (r<r_limit-2) { // limit -2 because we need at least a following flags and length field too
+      flags = *r++;
+      type_code = *r++;
+      attr_length = *r++;
+        if (0x10 & flags)
+          attr_length = attr_length << 8 | (*r++);
+      tmp_attr_ptr = r;
+      r += attr_length;
+      if (type_code < wanted_type_code) // the attribute was not found in the source routebut we have not yet gone past its slot
+        continue;
+      else if (type_code == wanted_type_code) {  // the attribute was found in the source route
+        attr_ptr = tmp_attr_ptr;
+        break;
+      } else // the attribute was not found in the source route and we have gone past its slot
+        break;
+    };
   };

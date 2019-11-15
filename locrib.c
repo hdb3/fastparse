@@ -51,7 +51,7 @@ void locrib(uint32_t extended_address, struct route *new) {
       (tiebreaker(&new->tiebreak,&current->tiebreak))) {
     LOCRIB[address] = SET64(new);
     if (!(push_flag))
-      locribj_push(extended_address);
+      locribj_push(address);
   };
 
   if (eob_flag)
@@ -86,7 +86,7 @@ void locrib_withdraw(uint32_t extended_address, struct route *new) {
     LOCRIB[address] = SET64(NULL);
 
     if (!(push_flag))
-      locribj_push(_LR_NULL_ROUTE | extended_address);
+      locribj_push(address);
 
     if (eob_flag)
       schedule_phase3();  // this is the point at which input processing for this route can stop

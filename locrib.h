@@ -3,11 +3,9 @@
 #define TOP64 0x8000000000000000
 
 #define TOP32 0x80000000
-#define SND32 0x40000000
 
 #define _LR_EOB TOP32
-#define _LR_NULL_ROUTE SND32
-#define _LR_INDEX_MASK 0x3fffffff
+#define _LR_INDEX_MASK 0x7fffffff
 
 extern struct route **LOCRIB;
 

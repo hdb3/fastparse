@@ -1,11 +1,11 @@
 
 #include "include.h"
-#define __BODY__ serialize_ibgp
+#define __BODY__ serialize_copy
 #include "bgpserialize2.tpl"
 #undef __BODY__
 
   get(ORIGIN);
-  set(1,0x40,ORIGIN,attr_ptr);
+  copy();
   get(AS_PATH);
   copy();
   get(NEXT_HOP);
@@ -13,9 +13,8 @@
   // TODO
   // if the attributes are wrongly ordered then the macine silenetly fails
   // by copying the previous attribute.....!!!!
-  // get(COMMUNITY);
-  // copy();
-  set4(0x40,LOCAL_PREF,route->tiebreak.local_pref);
+  get(COMMUNITY);
+  copy();
 
   *q_base = q;
 };
