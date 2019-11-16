@@ -1,7 +1,7 @@
 
 #include "include.h"
 #define __BODY__ serialize_copy
-#include "bgpserialize2.tpl"
+#include "bgpserialize.tpl"
 #undef __BODY__
 
   get(ORIGIN);

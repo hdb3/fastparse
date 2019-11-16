@@ -9,6 +9,7 @@ struct route * read_and_clear(uint32_t addrref) {
 };
 
 static uint8_t tx_buffer[8192] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff };
+static int over_length_detected = 0;
 
 void schedule_phase3() {
   uint32_t addrref;
@@ -17,7 +18,6 @@ void schedule_phase3() {
   struct route * route1, *route2=NULL;
   uint8_t *txp;
   
-  assert(npeergroups<3);
   do {
 
     if (NULL == route2) {
@@ -71,20 +71,26 @@ void schedule_phase3() {
         putw16(tx_buffer+21, attribute_length);
         for (index=0; index < table_index; index++)
           build_nlri(&txp,lookup_bigtable(addrreftable[index]));
+	// TODO
+	// build two or more updates when the length limit is exceeded
+	// this needs to extend build_nlri to take a limit, etc....
         uint16_t update_length = txp - tx_buffer;
         uint16_t nlri_length = txp - tx_buffer - attribute_length - 23;
 	// assert(4097>update_length);
         putw16(tx_buffer+16,update_length);
 
         assert (1 == fwrite(tx_buffer,update_length, 1, peergroups[pix].file));
-	if(4096<update_length) {
+	if(4096<update_length && !(over_length_detected)) {
+          over_length_detected=1;
 	  printf("over length exception (%d)\n",update_length);
+	  /*
           int fd = open("exception.bin",O_WRONLY | O_CREAT, 0666 );
           putw16(tx_buffer+16,4096);
           int tmp = write(fd,tx_buffer,update_length);
 	  close(fd);
-	  // exit(1);
-	  // assert(4097>update_length);
+	  exit(1);
+	  assert(4097>update_length);
+	  */
 	};
       };
     };

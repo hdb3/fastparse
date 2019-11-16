@@ -1,8 +1,13 @@
 #include "include.h"
 
-int npeergroups = 1;
-struct peergroup peergroups[1];
+extern void serialize_ebgp (struct route *route, uint8_t ** q_base , uint16_t q_max );
+extern void serialize_ibgp (struct route *route, uint8_t ** q_base , uint16_t q_max );
+extern void serialize_copy (struct route *route, uint8_t ** q_base , uint16_t q_max );
+
+int npeergroups = 0;
+struct peergroup peergroups[10];
 void init_peergroups () {
-  FILE* file = fopen("ibgp.bin", "w" );
-  peergroups[0] = (struct peergroup){ serialize_ibgp , file };
+  peergroups[npeergroups++] = (struct peergroup){ serialize_ibgp , fopen("ibgp.bin", "w" ) };
+  peergroups[npeergroups++] = (struct peergroup){ serialize_ebgp , fopen("ebgp.bin", "w" ) };
+  // peergroups[npeergroups++] = (struct peergroup){ serialize_copy , fopen("copy.bin", "w" ) };
 };

@@ -1,6 +1,5 @@
 
 #include "include.h"
-#undef __TRAILER__
 #define __BODY__ serialize_ibgp
 #include "bgpserialize.tpl"
 #undef __BODY__
@@ -11,8 +10,12 @@
   copy();
   get(NEXT_HOP);
   copy();
+  // TODO
+  // if the attributes are wrongly ordered then the macine silenetly fails
+  // by copying the previous attribute.....!!!!
+  // get(COMMUNITY);
+  // copy();
   set4(0x40,LOCAL_PREF,route->tiebreak.local_pref);
 
-#define __TRAILER__
-#include "bgpserialize.tpl"
-#undef __TRAILER__
+  *q_base = q;
+};
