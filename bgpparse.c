@@ -5,6 +5,7 @@ uint64_t _msg_count = 0;
 uint64_t unique = 0;
 uint64_t msg_max;
 uint64_t consumed=0;
+uint64_t received_prefixes=0;
 struct route **adj_rib_in=NULL;
 
 static inline void *alloc_adj_rib_in() {
@@ -31,6 +32,7 @@ static inline void update_adj_rib_in(uint32_t addrref, struct route *route) {
   fflush(stdout);
 */
 
+  received_prefixes++;
   struct route * old_route = adj_rib_in[addrindex];
   adj_rib_in[addrindex] = route;
   if (old_route) {
@@ -134,10 +136,13 @@ int buf_parse(void *base, int64_t length) {
   ptr = base;
   limit = base + length;
 
+  reinit_peergroups(); // repeat for every cycle so that the files are not concatenated
   reinit_bigtable();
   reinit_alloc();
   locrib_init();
   consumed=0;
+  propagated_prefixes = 0;
+  received_prefixes = 0;
   zero_adj_rib_in(adj_rib_in);
 
   while (ptr < limit && ( msg_max == 0 || msg_count < msg_max)) {
@@ -196,6 +201,10 @@ int main(int argc, char **argv) {
   double min_duration=0, max_duration=0, total_duration=0, ave_duration;
   double latency(double dur) { return dur / message_count * 1000000000; };
 
+  if (repeat>1)
+    // discard the first round because it is always anomalous
+    // - either higher, except with physical file IO, when usually lower
+    message_count = buf_parse(buf, length);
   for (i = 0; i < repeat; i++) {
     printf("%2d/%d: ",i+1,repeat); fflush(stdout);
     tmp = clock_gettime(CLOCK_REALTIME, &tstart);
@@ -237,6 +246,7 @@ int main(int argc, char **argv) {
 
   printf("\n");
   printf("FIB table size %d\n", bigtable_index);
+  printf("received prefix count: %ld  propagated prefix count %ld, (%2.1f)\n", received_prefixes, propagated_prefixes, (100.0*propagated_prefixes)/(1.0*received_prefixes));
   report_route_table();
   printf("ignored overlong prefixes: %d\n", too_long / repeat);
 };

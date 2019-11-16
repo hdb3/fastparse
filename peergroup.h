@@ -7,4 +7,5 @@ struct peergroup {
 extern int npeergroups;
 extern struct peergroup peergroups[];
 void init_peergroups ();
+void reinit_peergroups ();
 #endif

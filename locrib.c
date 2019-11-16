@@ -48,7 +48,12 @@ void locrib(uint32_t extended_address, struct route *new) {
 
   if ( ( NULL == current )  || // the RIB was empty for this address
                                // so the tiebreak is not needed....
+#ifdef NEWWINS
+      (1) ) { // this is the 'new always wins tiebreaker - produce maximum churn'
+#else
       (tiebreaker(&new->tiebreak,&current->tiebreak))) {
+#endif
+
     LOCRIB[address] = SET64(new);
     if (!(push_flag))
       locribj_push(address);

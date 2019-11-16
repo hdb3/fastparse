@@ -13,6 +13,7 @@ static struct route * read_and_clear(uint32_t addrref) {
 
 static uint8_t tx_buffer[8192] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff };
 static int over_length_detected = 0;
+uint64_t propagated_prefixes = 0; 
 
 void schedule_phase3() {
   uint32_t addrref;
@@ -44,6 +45,7 @@ void schedule_phase3() {
   // inner loop complete, either becuase the routes in the stream are now different
   // or the stream is ended
  
+  propagated_prefixes += table_index; 
   // regardless, process this block first
 
     uint32_t index;

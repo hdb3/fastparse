@@ -10,4 +10,5 @@ inline static struct route * read_and_clear(uint32_t addrref) {
     return (struct route *) routeptr;
 };
 extern inline void schedule_phase3();
+extern uint64_t propagated_prefixes;
 #endif
