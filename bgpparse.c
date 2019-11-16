@@ -155,6 +155,7 @@ int buf_parse(void *base, int64_t length) {
     ptr += msg_length;
     msg_count++;
   };
+  schedule_phase3(1);  // hard force to flush unfinished work
 
   consumed =  ptr-base;
   return msg_count;

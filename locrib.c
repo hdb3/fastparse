@@ -60,7 +60,7 @@ void locrib(uint32_t extended_address, struct route *new) {
   };
 
   if (eob_flag)
-    schedule_phase3();  // this is the point at which input processing for this route can stop
+    schedule_phase3(0);  // this is the point at which input processing for this route can stop
                         //  and start work on other update messages
 };
 
@@ -94,7 +94,7 @@ void locrib_withdraw(uint32_t extended_address, struct route *new) {
       locribj_push(address);
 
     if (eob_flag)
-      schedule_phase3();  // this is the point at which input processing for this route can stop
+      schedule_phase3(0);  // this is the point at which input processing for this route can stop
                           //  and start work on other update messages
   };
 };

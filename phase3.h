@@ -9,6 +9,6 @@ inline static struct route * read_and_clear(uint32_t addrref) {
     uint_fast64_t routeptr = atomic_fetch_xor(p,TOP64);
     return (struct route *) routeptr;
 };
-extern inline void schedule_phase3();
+extern inline void schedule_phase3(bool hard);
 extern uint64_t propagated_prefixes;
 #endif
