@@ -31,7 +31,7 @@ void __BODY__ (struct route *route, uint8_t ** q_base , uint16_t q_max ) {
     *q++ = flags & ~0x10;
     *q++ = type_code;
     *q++ = 4;
-    *q = __bswap_32(v);
+    * (uint32_t*) q = __bswap_32(v);
     q += 4;
   };
 
