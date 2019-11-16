@@ -34,8 +34,16 @@ static inline void update_adj_rib_in(uint32_t addrref, struct route *route) {
 */
 
   received_prefixes++;
+  /*
+  // insert for option 1 test
+  if (0 && route) {
+    if (addrref & _LR_EOB)
+      dalloc(route);
+  };
+  */
   struct route * old_route = adj_rib_in[addrindex];
   adj_rib_in[addrindex] = route;
+  // return; // insert for option 1 test
   if (old_route) {
     old_route->use_count--;
     if (0 == old_route->use_count)
@@ -44,9 +52,9 @@ static inline void update_adj_rib_in(uint32_t addrref, struct route *route) {
 
   if (route) {
     route->use_count++;
-    locrib(addrref,route,1);
+    locrib(addrref,route,1); // comment for option (2) test
   } else if (old_route)
-    locrib(addrref,route,0);
+    locrib(addrref,route,0);  // comment for option (2) test
   else ; // withdraw for a route we dont have - don't push this!
 };
 
