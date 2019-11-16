@@ -37,7 +37,7 @@ void locrib_init() {
  * The stored state (per address) is the pushed bit and another bit for the spin lock
 */
 
-void locrib(uint32_t extended_address, struct route *new) {
+void locrib(uint32_t extended_address, struct route *new, bool update) {
 
   uint32_t address = _LR_INDEX_MASK & extended_address;
   void* extended_current = LOCRIB[address];
@@ -46,55 +46,28 @@ void locrib(uint32_t extended_address, struct route *new) {
   bool eob_flag = _LR_EOB & extended_address;
   bool push_flag = ISSET64(extended_current);
 
-  if ( ( NULL == current )  || // the RIB was empty for this address
-                               // so the tiebreak is not needed....
-#ifdef NEWWINS
-      (1) ) { // this is the 'new always wins tiebreaker - produce maximum churn'
-#else
-      (tiebreaker(&new->tiebreak,&current->tiebreak))) {
-#endif
-
-    LOCRIB[address] = SET64(new);
-    if (!(push_flag))
+  inline void push(struct route *route) {
+    LOCRIB[address] = SET64(route);
+    if (!(push_flag)) {
       locribj_push(address);
+      if (eob_flag)
+        schedule_phase3(0);
+    };
   };
 
-  if (eob_flag)
-    schedule_phase3(0);  // this is the point at which input processing for this route can stop
-                        //  and start work on other update messages
-};
+  if (update) {
 
-void locrib_withdraw(uint32_t extended_address, struct route *new) {
+#ifndef NEWWINS
+    if ( NULL == current || tiebreaker(&new->tiebreak,&current->tiebreak))
+#else
+    if (1) // this is the 'new always wins tiebreaker - produces maximum churn'
+#endif
+      push(new);
 
-  uint32_t address = _LR_INDEX_MASK & extended_address;
-  void* extended_current = LOCRIB[address];
-  struct route * current = CLEAR64(extended_current);
 
-  bool eob_flag = _LR_EOB & extended_address;
-  bool push_flag = ISSET64(extended_current);
-
-  if ( NULL == CLEAR64(current )) {  // the RIB was empty for this address
-                                     // which should not happen for a withdraw....
-				     // but if the stream is not a complete session
-				     // it is _highly_ likely
-    // printf("addrref: %d , current %p\n",address,current);
-    // assert(NULL != current );
-
-  } else if (current != new) ; // the withdraw is not for the current winner
-                             // the route should still be removed, but no
-			     // route push is needed
-  else                     { // the withdraw is for the current winner
-                             // TODO
-			     // this will trigger full adj-rib-in re-selection
-			     // but for now i just treat as withdraw (stateless)
-
-    LOCRIB[address] = SET64(NULL);
-
-    if (!(push_flag))
-      locribj_push(address);
-
-    if (eob_flag)
-      schedule_phase3(0);  // this is the point at which input processing for this route can stop
-                          //  and start work on other update messages
+  // process withdraw
+  } else {
+     if ( current && current == new) // there is an entry to consider and it is this route
+        push(NULL);
   };
 };

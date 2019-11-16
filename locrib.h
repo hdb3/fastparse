@@ -17,6 +17,6 @@ void locrib_init();
 #define CLEAR64(ROUTE) (struct route*)(~TOP64 & (uint64_t) ROUTE)
 #define SET64(ROUTE) ((struct route*)(TOP64 | (uint64_t) ROUTE))
 
-extern inline void locrib(uint32_t address, struct route *new);
-extern inline void locrib_withdraw(uint32_t address, struct route *new);
+extern inline void locrib(uint32_t address, struct route *new, bool update);
+// extern inline void locrib_withdraw(uint32_t address, struct route *new);
 #endif

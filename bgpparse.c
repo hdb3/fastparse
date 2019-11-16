@@ -43,9 +43,9 @@ static inline void update_adj_rib_in(uint32_t addrref, struct route *route) {
 
   if (route) {
     route->use_count++;
-    locrib(addrref,route);
+    locrib(addrref,route,1);
   } else if (old_route)
-    locrib_withdraw(addrref,route);
+    locrib(addrref,route,0);
   else ; // withdraw for a route we dont have - don't push this!
 };
 
