@@ -6,6 +6,8 @@ uint64_t _msg_count = 0;
 uint64_t unique = 0;
 uint64_t msg_max;
 uint64_t consumed=0;
+uint64_t updates=0;
+uint64_t update_prefixes=0;
 uint64_t received_prefixes=0;
 struct route **adj_rib_in=NULL;
 
@@ -109,9 +111,12 @@ static inline void parse_update(void *p, uint16_t length) {
       if (TOO_BIG == addrref)
         too_long++;
       else {
-        if (nlrip == nlri + nlri_length)  // this is the last prefix in the list
+        if (nlrip == nlri + nlri_length) {  // this is the last prefix in the list
           addrref |= _LR_EOB;
+	  updates++;
+	};
         update_adj_rib_in(addrref,route);
+        update_prefixes++;
       };
     };
   };
@@ -152,6 +157,8 @@ int buf_parse(void *base, int64_t length) {
   consumed=0;
   propagated_prefixes = 0;
   received_prefixes = 0;
+  updates=0;
+  update_prefixes=0;
   zero_adj_rib_in(adj_rib_in);
 
   while (ptr < limit && ( msg_max == 0 || msg_count < msg_max)) {
@@ -249,6 +256,7 @@ int main(int argc, char **argv) {
 
   printf("\n");
   printf("FIB table size %d\n", bigtable_index);
+  printf("updates %ld  update prefixes %ld ave prefixes/update %1.2f\n", updates, update_prefixes, update_prefixes/(1.0*updates));
   printf("received prefix count: %ld  propagated prefix count %ld, (%2.1f)\n", received_prefixes, propagated_prefixes, (100.0*propagated_prefixes)/(1.0*received_prefixes));
   report_route_table();
   printf("ignored overlong prefixes: %d\n", too_long / repeat);

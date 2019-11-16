@@ -15,14 +15,19 @@ static uint8_t tx_buffer[8192] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0
 static int over_length_detected = 0;
 uint64_t propagated_prefixes = 0; 
 
+static atomic_bool running=false;
+
 void schedule_phase3(bool hard) {
   uint32_t addrref;
   uint32_t addrreftable [ 4096 ];
   uint16_t table_index;
   struct route * route1, *route2=NULL;
   uint8_t *txp;
-  
-  if (hard) do {
+   
+  if (atomic_flag_test_and_set(&running))
+    return;
+
+  if (1) do {
 
     if (NULL == route2) {
       addrref = locribj_pull();
@@ -102,4 +107,5 @@ void schedule_phase3(bool hard) {
       };
     };
   } while (JOURNAL_EMPTY != addrref);
+  atomic_flag_clear(&running);
 };
