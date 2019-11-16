@@ -7,6 +7,8 @@ extern void serialize_copy (struct route *route, uint8_t ** q_base , uint16_t q_
 int npeergroups = 0;
 struct peergroup peergroups[10];
 void init_peergroups () {
+  // NULL FILE* allows testing of serilaisation without file IO overhead
+  // peergroups[npeergroups++] = (struct peergroup){ serialize_ibgp , NULL };
   peergroups[npeergroups++] = (struct peergroup){ serialize_ibgp , fopen("ibgp.bin", "w" ) };
   peergroups[npeergroups++] = (struct peergroup){ serialize_ebgp , fopen("ebgp.bin", "w" ) };
   // peergroups[npeergroups++] = (struct peergroup){ serialize_copy , fopen("copy.bin", "w" ) };

@@ -38,16 +38,16 @@ void schedule_phase3() {
 	else
           route2 = NULL;
     };
-  // inner loop over either becuase the routes in the stream are now different
+  // inner loop complete, either becuase the routes in the stream are now different
   // or the stream is ended
  
   // regardless, process this block first
-    // table_index = table_index > TABSIZE ? TABSIZE : table_index;
+
     uint32_t index;
     uint16_t pix;
 
-    tx_buffer[18] = 2;
-    if (NULL==route1){ // it is withdraw
+    tx_buffer[18] = 2; // type_code = UPDATE
+    if (NULL==route1){ // this is a route withdraw
       txp = tx_buffer+23;
       for (index=0; index < table_index; index++)
         build_nlri(&txp,lookup_bigtable(addrreftable[index]));
@@ -57,16 +57,17 @@ void schedule_phase3() {
       putw16(tx_buffer+19,withdraw_length);
       putw16(txp, 0); // path attribute length
 
-      for (pix=0;pix<npeergroups;pix++)
-        assert (1 == fwrite(tx_buffer,update_length, 1, peergroups[pix].file));
+      for (pix=0;pix<npeergroups;pix++) {
+	if (peergroups[pix].file) // allow testing to build the update but never write it if the destination is not open
+          assert (1 == fwrite(tx_buffer,update_length, 1, peergroups[pix].file));
+      };
 
-    } else {
+    } else { // this is a route update
       putw16(tx_buffer+19,0); // withdrwa length zero for all updates
       for (pix=0;pix<npeergroups;pix++) {
 	struct peergroup *pg = &peergroups[pix];
         txp = tx_buffer+23;
         pg->serialize(CLEAR64(route1),&txp,4064);
-        // serialize_copy(CLEAR64(route1),&txp,4064);
         uint16_t attribute_length = txp - (tx_buffer+23);
         putw16(tx_buffer+21, attribute_length);
         for (index=0; index < table_index; index++)
@@ -79,7 +80,8 @@ void schedule_phase3() {
 	// assert(4097>update_length);
         putw16(tx_buffer+16,update_length);
 
-        assert (1 == fwrite(tx_buffer,update_length, 1, peergroups[pix].file));
+	if (peergroups[pix].file) // allow testing to build the update but never write it if the destination is not open
+          assert (1 == fwrite(tx_buffer,update_length, 1, peergroups[pix].file));
 	if(4096<update_length && !(over_length_detected)) {
           over_length_detected=1;
 	  printf("over length exception (%d)\n",update_length);
