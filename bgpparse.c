@@ -1,5 +1,6 @@
 #include "include.h"
 
+int spare = 0;
 int too_long = 0;
 uint64_t _msg_count = 0;
 uint64_t unique = 0;
@@ -150,7 +151,8 @@ int buf_parse(void *base, int64_t length) {
     msg_length = getw16(ptr + 16);
     msg_type = getw8(ptr + 18);
     assert(2 == msg_type); // this is an update parser, not a BGP FSM!!!!
-    if (msg_length > 23)   // i.e., not an EOR
+    if (msg_length > 23 && spare <= msg_count)   // i.e., not an EOR
+    // if (msg_length > 23)   // i.e., not an EOR
       parse_update(ptr + 19, msg_length - 19);
     ptr += msg_length;
     msg_count++;
@@ -194,6 +196,11 @@ int main(int argc, char **argv) {
   else
     msg_max = 0;
 
+  if (4 < argc && 1 == sscanf(argv[4], "%d", &tmp))
+    spare = tmp;
+  else
+    spare = 0;
+
   init_alloc();
   init_bigtable();
   init_peergroups();
@@ -221,19 +228,6 @@ int main(int argc, char **argv) {
       min_duration = duration;
   };
   ave_duration = total_duration / repeat;
-
-  /*
-  tmp = clock_gettime(CLOCK_REALTIME, &tstart);
-  message_count = buf_parse(buf, length);
-  if (repeat) {
-    tmp = clock_gettime(CLOCK_REALTIME, &tstart);
-    for (i = 0; i < repeat; i++)
-      message_count = buf_parse(buf, length);
-  } else
-      repeat = 1;
-  tmp = clock_gettime(CLOCK_REALTIME, &tend);
-  duration = timespec_to_ms(timespec_sub(tend, tstart)) / 1000.0;
-  */
 
   printf("complete in %0.2fs (%d cycles)\n", total_duration, repeat);
   printf("read %ld messages  ", message_count);
