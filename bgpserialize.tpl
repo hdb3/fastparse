@@ -12,7 +12,7 @@ void __BODY__ (struct route *route, uint8_t ** q_base , uint16_t q_max ) {
   uint16_t attr_length;
   uint8_t *attr_ptr;
 
-  void set (uint16_t attr_length, uint8_t flags, uint8_t type_code, uint8_t *attr_ptr) {
+  inline void set (uint16_t attr_length, uint8_t flags, uint8_t type_code, uint8_t *attr_ptr) {
     if (attr_length<256) {
       *q++ = flags & ~0x10;
       *q++ = type_code;
@@ -27,7 +27,7 @@ void __BODY__ (struct route *route, uint8_t ** q_base , uint16_t q_max ) {
     q += attr_length;
   };
 
-  void set4 (uint8_t flags, uint8_t type_code, uint32_t v) {
+  inline void set4 (uint8_t flags, uint8_t type_code, uint32_t v) {
     *q++ = flags & ~0x10;
     *q++ = type_code;
     *q++ = 4;
@@ -35,7 +35,7 @@ void __BODY__ (struct route *route, uint8_t ** q_base , uint16_t q_max ) {
     q += 4;
   };
 
-  void prepend (uint32_t as) {
+  inline void prepend (uint32_t as) {
     if (attr_ptr) {
     if(2 != *attr_ptr)
       printf("seg type = %2x\n",*attr_ptr);
@@ -63,7 +63,7 @@ void __BODY__ (struct route *route, uint8_t ** q_base , uint16_t q_max ) {
     };
   };
 
-  void copy () {
+  inline void copy () {
     if (attr_ptr) {
       if (attr_length<256) {
         *q++ = flags & ~0x10;
@@ -81,7 +81,7 @@ void __BODY__ (struct route *route, uint8_t ** q_base , uint16_t q_max ) {
     // assert(q < q_limit);
   };
 
-  void get (uint8_t wanted_type_code) {
+  inline void get (uint8_t wanted_type_code) {
 
   uint8_t *tmp_attr_ptr;
   attr_ptr = NULL;  // default outcome

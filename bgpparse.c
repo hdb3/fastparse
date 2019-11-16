@@ -56,7 +56,6 @@ static inline void parse_update(void *p, uint16_t length) {
   uint16_t withdraw_length = getw16(p);
   uint16_t pathattributes_length = getw16(p + 2 + withdraw_length);
   uint16_t nlri_length = length - withdraw_length - pathattributes_length - 4;
-  assert(length >= 4 + withdraw_length + pathattributes_length); // sanity check
   assert(4097>length);
   void *withdrawn = p + 2;
   void *path_attributes = p + 4 + withdraw_length;
@@ -104,7 +103,6 @@ static inline void parse_update(void *p, uint16_t length) {
         update_adj_rib_in(addrref,route);
       };
     };
-    assert (nlrip == nlri + nlri_length);  // sanity check - will remove when code is tested
   };
 
   if (withdraw_length) {
@@ -121,12 +119,11 @@ static inline void parse_update(void *p, uint16_t length) {
         update_adj_rib_in(addrref,NULL);
       };
     };
-    assert (withdrawp == withdrawn + withdraw_length);  // sanity check - will remove when code is tested
   };
 };
 
 static unsigned char marker[16] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-int msg_parse(void *base, int64_t length) {
+int buf_parse(void *base, int64_t length) {
 
   void *ptr, *limit, *msg;
   uint8_t msg_type;
@@ -154,7 +151,6 @@ int msg_parse(void *base, int64_t length) {
     msg_count++;
   };
 
-  assert(msg_count == msg_max || ptr == limit);
   consumed =  ptr-base;
   return msg_count;
 };
@@ -185,7 +181,7 @@ int main(int argc, char **argv) {
   if (2 < argc && 1 == sscanf(argv[2], "%d", &tmp))
     repeat = tmp;
   else
-    repeat = 5;
+    repeat = 1;
 
   if (3 < argc && 1 == sscanf(argv[3], "%d", &tmp))
     msg_max = tmp;
@@ -197,24 +193,49 @@ int main(int argc, char **argv) {
   init_peergroups();
   adj_rib_in = alloc_adj_rib_in();
 
+  double min_duration=0, max_duration=0, total_duration=0, ave_duration;
+  double latency(double dur) { return dur / message_count * 1000000000; };
+
+  for (i = 0; i < repeat; i++) {
+    printf("%2d/%d: ",i+1,repeat); fflush(stdout);
+    tmp = clock_gettime(CLOCK_REALTIME, &tstart);
+    message_count = buf_parse(buf, length);
+    tmp = clock_gettime(CLOCK_REALTIME, &tend);
+    duration = timespec_to_double(timespec_sub(tend, tstart));
+    printf("%3.3fs (latency %3.2fnS)\n", duration, latency(duration)); fflush(stdout);
+    total_duration += duration;
+    max_duration = duration > max_duration ? duration : max_duration;
+    if (min_duration)
+      min_duration = duration < min_duration ? duration : min_duration;
+    else
+      min_duration = duration;
+  };
+  ave_duration = total_duration / repeat;
+
+  /*
   tmp = clock_gettime(CLOCK_REALTIME, &tstart);
-  message_count = msg_parse(buf, length);
+  message_count = buf_parse(buf, length);
   if (repeat) {
     tmp = clock_gettime(CLOCK_REALTIME, &tstart);
     for (i = 0; i < repeat; i++)
-      message_count = msg_parse(buf, length);
+      message_count = buf_parse(buf, length);
   } else
       repeat = 1;
-
   tmp = clock_gettime(CLOCK_REALTIME, &tend);
   duration = timespec_to_ms(timespec_sub(tend, tstart)) / 1000.0;
-  printf("SMALL is %d LARGE is %d\n",SMALL,LARGE);
-  printf("read %ld messages\n", message_count);
-  printf("complete in %f\n", duration);
-  printf("M msgs/sec = %f\n", repeat * message_count / duration / 1000000);
-  printf("msgs latency (nsec) = %f\n", duration / repeat / message_count * 1000000000);
-  printf("Gbytes/sec = %f\n", repeat * consumed / duration / 1000000000);
+  */
+
+  printf("complete in %0.2fs (%d cycles)\n", total_duration, repeat);
+  printf("read %ld messages  ", message_count);
   printf("(average message size is %0.2f bytes)\n", (1.0 * consumed) / message_count);
+  printf("M msgs/sec = %f\n", repeat * message_count / total_duration / 1000000);
+  printf("Gbytes/sec = %f\n", repeat * consumed / total_duration / 1000000000);
+
+  printf("\n");
+  printf("average: %f  minimum: %f  maximum: %f\n" ,ave_duration , min_duration , max_duration );
+  printf("latency(nsec): average: %3.2f  minimum: %3.2f  maximum: %3.2f\n" ,latency(ave_duration) , latency(min_duration) , latency(max_duration) );
+
+  printf("\n");
   printf("FIB table size %d\n", bigtable_index);
   report_route_table();
   printf("ignored overlong prefixes: %d\n", too_long / repeat);
