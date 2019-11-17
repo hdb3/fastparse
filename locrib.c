@@ -44,10 +44,18 @@ void locrib(uint32_t extended_address, struct route *new, bool update) {
   struct route * current = CLEAR64(extended_current);
 
   bool eob_flag = _LR_EOB & extended_address;
-  bool push_flag = ISSET64(extended_current);
+  // TODO make LOCRIB an array of uint_fast64_t
+  // (before it becomes an array of some struct)
+  inline bool set_and_check(uint32_t addrref,struct route *new_route) {
+    uint_fast64_t* p = (uint_fast64_t*) &LOCRIB[addrref];
+    uint_fast64_t routeptr = atomic_exchange(p,(uint_fast64_t) new_route);
+    return (TOP64 & routeptr);
+  };
 
+  // TODO
+  // combine these two functions
   inline void push(struct route *route) {
-    LOCRIB[address] = SET64(route);
+    bool push_flag = set_and_check(address,SET64(route));
     if (!(push_flag)) {
       locribj_push(address);
       if (eob_flag)
