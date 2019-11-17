@@ -9,7 +9,7 @@ uint64_t consumed=0;
 uint64_t updates=0;
 uint64_t update_prefixes=0;
 uint64_t received_prefixes=0;
-struct route **adj_rib_in=NULL;
+//struct route **adj_rib_in=NULL;
 
 static inline void *alloc_adj_rib_in() {
   return calloc(BIG, sizeof(void*));
@@ -19,7 +19,7 @@ static inline void zero_adj_rib_in(void*p) {
   memset(p,0,BIG*sizeof(void*));
 };
 
-static inline void update_adj_rib_in(uint32_t addrref, struct route *route) {
+static inline void update_adj_rib_in(struct route** adj_rib_in, uint32_t addrref, struct route *route) {
 
   uint32_t addrindex = addrref & _LR_INDEX_MASK;  // mask off the overloaded top bits in addrref
 
@@ -60,7 +60,7 @@ static inline void update_adj_rib_in(uint32_t addrref, struct route *route) {
   else ; // withdraw for a route we dont have - don't push this!
 };
 
-static inline void parse_update(void *p, uint16_t length) {
+static inline void parse_update(struct route** adj_rib_in,void *p, uint16_t length) {
 
   struct route *route = NULL;
   struct route * sroute;
@@ -115,7 +115,7 @@ static inline void parse_update(void *p, uint16_t length) {
           addrref |= _LR_EOB;
 	  updates++;
 	};
-        update_adj_rib_in(addrref,route);
+        update_adj_rib_in(adj_rib_in,addrref,route);
         update_prefixes++;
       };
     };
@@ -132,14 +132,14 @@ static inline void parse_update(void *p, uint16_t length) {
       else {
         if (withdrawp == withdrawn + withdraw_length)  // this is the last prefix in the list
           addrref |= _LR_EOB;
-        update_adj_rib_in(addrref,NULL);
+        update_adj_rib_in(adj_rib_in,addrref,NULL);
       };
     };
   };
 };
 
 static unsigned char marker[16] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-int buf_parse(void *base, int64_t length) {
+int buf_parse(struct route** adj_rib_in,void *base, int64_t length) {
 
   void *ptr, *limit, *msg;
   uint8_t msg_type;
@@ -168,7 +168,7 @@ int buf_parse(void *base, int64_t length) {
     assert(2 == msg_type); // this is an update parser, not a BGP FSM!!!!
     if (msg_length > 23 && spare <= msg_count)   // i.e., not an EOR
     // if (msg_length > 23)   // i.e., not an EOR
-      parse_update(ptr + 19, msg_length - 19);
+      parse_update(adj_rib_in,ptr + 19, msg_length - 19);
     ptr += msg_length;
     msg_count++;
   };
@@ -188,6 +188,7 @@ int main(int argc, char **argv) {
   int tmp, i, repeat;
   struct timespec tstart, tend;
   double duration;
+  struct route **adj_rib_in=NULL;
 
   fname = argv[1];
   fd = open(fname, O_RDONLY);
@@ -227,11 +228,11 @@ int main(int argc, char **argv) {
   if (repeat>1)
     // discard the first round because it is always anomalous
     // - either higher, except with physical file IO, when usually lower
-    message_count = buf_parse(buf, length);
+    message_count = buf_parse(adj_rib_in,buf, length);
   for (i = 0; i < repeat; i++) {
     printf("%2d/%d: ",i+1,repeat); fflush(stdout);
     tmp = clock_gettime(CLOCK_REALTIME, &tstart);
-    message_count = buf_parse(buf, length);
+    message_count = buf_parse(adj_rib_in,buf, length);
     tmp = clock_gettime(CLOCK_REALTIME, &tend);
     duration = timespec_to_double(timespec_sub(tend, tstart));
     printf("%3.3fs (latency %3.2fnS)\n", duration, latency(duration)); fflush(stdout);
