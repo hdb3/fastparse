@@ -4,8 +4,8 @@
 // (modified)
 uint32_t toHostAddress(char *s) {
   struct in_addr addr;
-  assert(0 == inet_aton(s, &addr));
-  return addr.s_addr;
+  assert(0 != inet_aton(s, &addr));
+  return __bswap_32(addr.s_addr);
 };
 // end from kakapo/core/util.c
 
@@ -30,6 +30,6 @@ void reinit_peers () {
 
 void init_peers () {
   // peers[npeers++] = (struct peer){ static_local_pref, ebgp, bgpid, peer_address, adj_rib_in};
-  peers[npeers++] = (struct peer){ 42, true, toHostAddress("192.168.1.1"),toHostAddress("192.168.1.1"), (struct route**) alloc_adj_rib_in()};
+  peers[npeers++] = (struct peer){ 42, true, toHostAddress("192.168.1.1"), toHostAddress("192.168.1.1"), (struct route**) alloc_adj_rib_in()};
   // peers[npeers++] = (struct peer){ 43, false, toHostAddress("192.168.2.1"),toHostAddress("192.168.2.1")};
 };
