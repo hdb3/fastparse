@@ -129,18 +129,14 @@ static inline void parse_update(struct peer* peer,void *p, uint16_t length) {
   };
 };
 
-static unsigned char marker[16] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-int buf_parse(void *base, int64_t length) {
+void init() {
+  init_alloc();
+  init_bigtable();
+  init_peers();
+  init_peergroups();
+};
 
-  void *ptr, *limit, *msg;
-  uint8_t msg_type;
-  uint16_t msg_length;
-  // this is a per iteration count - _msg_count is global....
-  uint32_t msg_count=0;
-
-  ptr = base;
-  limit = base + length;
-
+void reinit() {
   reinit_peergroups(); // repeat for every cycle so that the files are not concatenated
   reinit_peers();
   reinit_bigtable();
@@ -151,7 +147,19 @@ int buf_parse(void *base, int64_t length) {
   received_prefixes = 0;
   updates=0;
   update_prefixes=0;
-  struct peer *peer = peers;
+};
+
+static unsigned char marker[16] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+int buf_parse_peer(struct peer *peer, void *base, int64_t length) {
+
+  uint32_t msg_count=0;
+  void *ptr, *limit, *msg;
+  uint8_t msg_type;
+  uint16_t msg_length;
+
+  ptr = base;
+  limit = base + length;
 
   while (ptr < limit && ( msg_max == 0 || msg_count < msg_max)) {
     assert(0 == memcmp(marker, ptr, 16));
@@ -164,9 +172,30 @@ int buf_parse(void *base, int64_t length) {
     ptr += msg_length;
     msg_count++;
   };
+  return msg_count;
+};
+
+struct buf {void *base; int64_t length;};
+
+void split_buf(int n, struct buf *buf, void *base, int64_t length) {
+  buf[0] = (struct buf) {base,length};
+};
+
+int buf_parse(void *base, int64_t length) {
+
+  int pn;
+  // this is a per iteration count - _msg_count is global....
+  uint32_t msg_count=0;
+
+  reinit();
+
+  for (pn=0;pn<npeers;pn++)
+    msg_count = buf_parse_peer(peers+pn,base,length);
+
   schedule_phase3(1);  // hard force to flush unfinished work
 
-  consumed =  ptr-base;
+  // TODO fix consumed which will be wrong after doing multipeer
+  // consumed =  ptr-base;
   return msg_count;
 };
 
@@ -209,10 +238,7 @@ int main(int argc, char **argv) {
   else
     spare = 0;
 
-  init_alloc();
-  init_bigtable();
-  init_peers();
-  init_peergroups();
+  init();
 
   double min_duration=0, max_duration=0, total_duration=0, ave_duration;
   double latency(double dur) { return dur / message_count * 1000000000; };
