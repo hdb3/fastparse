@@ -1,9 +1,9 @@
 
 #include "include.h"
 
-void phase1(struct route **r){
-  (*r) -> tiebreak.ebgp = 1;
-  (*r) -> tiebreak.peer_address = 0x12312377;
-  (*r) -> tiebreak.local_pref = 100;
-  (*r) -> tiebreak.bgpid = 0x21223344;
+void phase1(struct peer * peer, struct route **r){
+  (*r) -> tiebreak.ebgp = peer->ebgp;
+  (*r) -> tiebreak.peer_address = peer->peer_address;
+  (*r) -> tiebreak.local_pref = peer->static_local_pref;
+  (*r) -> tiebreak.bgpid = peer->bgpid;
 };

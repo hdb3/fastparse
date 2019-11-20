@@ -1,5 +1,5 @@
 #ifndef __PHASE1_H
 #define __PHASE1_H
-
-extern inline void phase1(struct route **r);
+#include "include.h"
+extern inline void phase1(struct peer * peer, struct route **);
 #endif

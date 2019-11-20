@@ -9,17 +9,8 @@ uint64_t consumed=0;
 uint64_t updates=0;
 uint64_t update_prefixes=0;
 uint64_t received_prefixes=0;
-//struct route **adj_rib_in=NULL;
 
-static inline void *alloc_adj_rib_in() {
-  return calloc(BIG, sizeof(void*));
-};
-
-static inline void zero_adj_rib_in(void*p) {
-  memset(p,0,BIG*sizeof(void*));
-};
-
-static inline void update_adj_rib_in(struct route** adj_rib_in, uint32_t addrref, struct route *route) {
+static inline void update_adj_rib_in(struct peer* peer, uint32_t addrref, struct route *route) {
 
   uint32_t addrindex = addrref & _LR_INDEX_MASK;  // mask off the overloaded top bits in addrref
 
@@ -43,8 +34,8 @@ static inline void update_adj_rib_in(struct route** adj_rib_in, uint32_t addrref
       dalloc(route);
   };
   */
-  struct route * old_route = adj_rib_in[addrindex];
-  adj_rib_in[addrindex] = route;
+  struct route * old_route = peer->adj_rib_in[addrindex];
+  peer->adj_rib_in[addrindex] = route;
   // return; // insert for option 1 test
   if (old_route) {
     old_route->use_count--;
@@ -60,7 +51,7 @@ static inline void update_adj_rib_in(struct route** adj_rib_in, uint32_t addrref
   else ; // withdraw for a route we dont have - don't push this!
 };
 
-static inline void parse_update(struct route** adj_rib_in,void *p, uint16_t length) {
+static inline void parse_update(struct peer* peer,void *p, uint16_t length) {
 
   struct route *route = NULL;
   struct route * sroute;
@@ -98,7 +89,7 @@ static inline void parse_update(struct route** adj_rib_in,void *p, uint16_t leng
     route->update_length = pathattributes_length;
     memcpy((void*)route + sizeof(struct route), path_attributes, pathattributes_length);
     route->unique = unique++;
-    phase1(&route);
+    phase1(peer, &route);
     parse_attributes(path_attributes, pathattributes_length, route);
   };
 
@@ -115,7 +106,7 @@ static inline void parse_update(struct route** adj_rib_in,void *p, uint16_t leng
           addrref |= _LR_EOB;
 	  updates++;
 	};
-        update_adj_rib_in(adj_rib_in,addrref,route);
+        update_adj_rib_in(peer,addrref,route);
         update_prefixes++;
       };
     };
@@ -132,14 +123,14 @@ static inline void parse_update(struct route** adj_rib_in,void *p, uint16_t leng
       else {
         if (withdrawp == withdrawn + withdraw_length)  // this is the last prefix in the list
           addrref |= _LR_EOB;
-        update_adj_rib_in(adj_rib_in,addrref,NULL);
+        update_adj_rib_in(peer,addrref,NULL);
       };
     };
   };
 };
 
 static unsigned char marker[16] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-int buf_parse(struct route** adj_rib_in,void *base, int64_t length) {
+int buf_parse(void *base, int64_t length) {
 
   void *ptr, *limit, *msg;
   uint8_t msg_type;
@@ -151,6 +142,7 @@ int buf_parse(struct route** adj_rib_in,void *base, int64_t length) {
   limit = base + length;
 
   reinit_peergroups(); // repeat for every cycle so that the files are not concatenated
+  reinit_peers();
   reinit_bigtable();
   reinit_alloc();
   locrib_init();
@@ -159,7 +151,7 @@ int buf_parse(struct route** adj_rib_in,void *base, int64_t length) {
   received_prefixes = 0;
   updates=0;
   update_prefixes=0;
-  zero_adj_rib_in(adj_rib_in);
+  struct peer *peer = peers;
 
   while (ptr < limit && ( msg_max == 0 || msg_count < msg_max)) {
     assert(0 == memcmp(marker, ptr, 16));
@@ -168,7 +160,7 @@ int buf_parse(struct route** adj_rib_in,void *base, int64_t length) {
     assert(2 == msg_type); // this is an update parser, not a BGP FSM!!!!
     if (msg_length > 23 && spare <= msg_count)   // i.e., not an EOR
     // if (msg_length > 23)   // i.e., not an EOR
-      parse_update(adj_rib_in,ptr + 19, msg_length - 19);
+      parse_update(peer,ptr + 19, msg_length - 19);
     ptr += msg_length;
     msg_count++;
   };
@@ -219,8 +211,8 @@ int main(int argc, char **argv) {
 
   init_alloc();
   init_bigtable();
+  init_peers();
   init_peergroups();
-  adj_rib_in = alloc_adj_rib_in();
 
   double min_duration=0, max_duration=0, total_duration=0, ave_duration;
   double latency(double dur) { return dur / message_count * 1000000000; };
@@ -228,11 +220,11 @@ int main(int argc, char **argv) {
   if (repeat>1)
     // discard the first round because it is always anomalous
     // - either higher, except with physical file IO, when usually lower
-    message_count = buf_parse(adj_rib_in,buf, length);
+    message_count = buf_parse(buf, length);
   for (i = 0; i < repeat; i++) {
     printf("%2d/%d: ",i+1,repeat); fflush(stdout);
     tmp = clock_gettime(CLOCK_REALTIME, &tstart);
-    message_count = buf_parse(adj_rib_in,buf, length);
+    message_count = buf_parse(buf, length);
     tmp = clock_gettime(CLOCK_REALTIME, &tend);
     duration = timespec_to_double(timespec_sub(tend, tstart));
     printf("%3.3fs (latency %3.2fnS)\n", duration, latency(duration)); fflush(stdout);

@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "hex.h"
 #include "getw.h"
@@ -28,5 +29,6 @@
 #include "phase3.h"
 #include "bgpupdate.h"
 #include "bgpparse.h"
+#include "peer.h"
 #include "peergroup.h"
 #include "disseminate.h"

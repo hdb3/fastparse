@@ -17,6 +17,8 @@ static inline void parse_attribute(uint8_t type_code, void *p, uint16_t length, 
 
     case NEXT_HOP:
       assert(4 == length);
+      // TODO
+      // remeber why i commented thi sout.....
       // route->next_hop = *(uint32_t *)p;
       break;
 
