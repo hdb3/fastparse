@@ -151,15 +151,18 @@ void reinit() {
 
 static unsigned char marker[16] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
-int buf_parse_peer(struct peer *peer, void *base, int64_t length) {
+int buf_parse_peer(struct peer *peer) {
 
+  printf("enter buf_parse_peer\n");
   uint32_t msg_count=0;
   void *ptr, *limit, *msg;
   uint8_t msg_type;
   uint16_t msg_length;
 
-  ptr = base;
-  limit = base + length;
+  // base = peer->base;
+  // length = peer->length;
+  ptr = peer->base;
+  limit = ptr + peer->length;
 
   while (ptr < limit && ( msg_max == 0 || msg_count < msg_max)) {
     assert(0 == memcmp(marker, ptr, 16));
@@ -172,6 +175,7 @@ int buf_parse_peer(struct peer *peer, void *base, int64_t length) {
     ptr += msg_length;
     msg_count++;
   };
+  printf("leave buf_parse_peer\n");
   return msg_count;
 };
 
@@ -185,12 +189,18 @@ int buf_parse(void *base, int64_t length) {
 
   int pn;
   // this is a per iteration count - _msg_count is global....
-  uint32_t msg_count=0;
+  uint64_t msg_count=0;
 
   reinit();
 
-  for (pn=0;pn<npeers;pn++)
-    msg_count = buf_parse_peer(peers+pn,base,length);
+  for (pn=0;pn<npeers;pn++) {
+    struct peer *peer = peers+pn;
+    peer->base = base;
+    peer->length = length;
+    // msg_count = buf_parse_peer(peer);
+    pthread_create(&(peer->thread_id), NULL, (void*)buf_parse_peer, (void*) peer);
+    assert(0 == pthread_join(peer->thread_id,(void**)&msg_count));
+  };
 
   schedule_phase3(1);  // hard force to flush unfinished work
 
