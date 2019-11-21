@@ -22,9 +22,9 @@ void init_peergroups () {
 
   // peergroups[npeergroups++] = (struct peergroup){ serialize_ibgp , NULL };
   // peergroups[npeergroups++] = (struct peergroup){ serialize_ebgp , NULL };
-  // peergroups[npeergroups++] = (struct peergroup){ serialize_ibgp , fopen("/dev/null", "w" ) };
-  // peergroups[npeergroups++] = (struct peergroup){ serialize_ebgp , fopen("/dev/null", "w" ) };
-  peergroups[npeergroups++] = (struct peergroup){ serialize_ibgp , fopen("ibgp.bin", "w" ) };
-  peergroups[npeergroups++] = (struct peergroup){ serialize_ebgp , fopen("ebgp.bin", "w" ) };
+  peergroups[npeergroups++] = (struct peergroup){ serialize_ibgp , fopen("/dev/null", "w" ) };
+  peergroups[npeergroups++] = (struct peergroup){ serialize_ebgp , fopen("/dev/null", "w" ) };
+  // peergroups[npeergroups++] = (struct peergroup){ serialize_ibgp , fopen("ibgp.bin", "w" ) };
+  // peergroups[npeergroups++] = (struct peergroup){ serialize_ebgp , fopen("ebgp.bin", "w" ) };
   // peergroups[npeergroups++] = (struct peergroup){ serialize_copy , fopen("copy.bin", "w" ) };
 };

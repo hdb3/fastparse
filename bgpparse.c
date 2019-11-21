@@ -182,7 +182,41 @@ int buf_parse_peer(struct peer *peer) {
 struct buf {void *base; int64_t length;};
 
 void split_buf(int n, struct buf *buf, void *base, int64_t length) {
-  buf[0] = (struct buf) {base,length};
+  // the idea is to split the single buffer into roughly equal chaunks
+  // method: find the byteoffset(s) for the split requested by integer division
+  // then step back in the buffer until a full marker is seen
+  //
+  // at each stage we search for the _end_ of the next buffer
+  // the previous stage already set the start of our buffer, which is also the limit of
+  // our search.
+  // We step backwards with a cursor: if the value under the cursor if 0xff, ++ a count
+  // if the count gets to 16 then we have found our place.
+  // If the value is not 0xff, zero the counter and keep going
+  //
+  // buf[0] = (struct buf) {base,length};
+
+  int p;
+  uint8_t mark_count;
+  uint64_t offset=0, limit=0;
+  for (p=0;p<n;p++){
+    buf[p].base = base+offset;
+    offset = (p+1) * length / n;
+    printf("pn %d limit %ld  start %ld",p,limit,offset);  
+    mark_count = 0;
+    while (offset>limit) {
+      if (0xff != *(uint8_t*)(base+offset))
+        mark_count=0;
+      else
+        mark_count++;
+      if (16==mark_count)
+	break;
+      offset--;
+    };
+    assert(16==mark_count);
+    buf[p].length = base+offset - buf[p].base;
+  printf("  top %ld",offset);
+  printf("  %d:[%p,%ld]\n",p,buf[p].base,buf[p].length);
+  };
 };
 
 int buf_parse(void *base, int64_t length) {
@@ -192,13 +226,21 @@ int buf_parse(void *base, int64_t length) {
   uint64_t msg_count=0;
 
   reinit();
+  struct buf bufs[npeers];
+  split_buf(npeers, bufs, base, length);
+  // exit(0);
 
   for (pn=0;pn<npeers;pn++) {
     struct peer *peer = peers+pn;
-    peer->base = base;
-    peer->length = length;
-    // msg_count = buf_parse_peer(peer);
+    peer->base = bufs[pn].base;
+    peer->length = bufs[pn].length;
+    // msg_count = buf_parse_peer(peer); // this is the non-threaded version
     pthread_create(&(peer->thread_id), NULL, (void*)buf_parse_peer, (void*) peer);
+    // assert(0 == pthread_join(peer->thread_id,(void**)&msg_count));
+  };
+
+  for (pn=0;pn<npeers;pn++) {
+    struct peer *peer = peers+pn;
     assert(0 == pthread_join(peer->thread_id,(void**)&msg_count));
   };
 
