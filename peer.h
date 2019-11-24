@@ -10,6 +10,7 @@ struct peer {
   pthread_t thread_id;
   void *base;
   int64_t length;
+  struct cache *cache;
 };
 
 extern int npeers;

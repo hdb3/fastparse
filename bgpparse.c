@@ -40,7 +40,7 @@ static inline void update_adj_rib_in(struct peer* peer, uint32_t addrref, struct
   if (old_route) {
     old_route->use_count--;
     if (0 == old_route->use_count)
-      dalloc(old_route);
+      dalloc(peer->cache,old_route);
   };
 
   if (route) {
@@ -83,7 +83,7 @@ static inline void parse_update(struct peer* peer,void *p, uint16_t length) {
   };
   */
   if (pathattributes_length && nlri_length) {
-    route = alloc(length + sizeof(struct route));
+    route = alloc(peer->cache,length + sizeof(struct route));
     memset(route, 0, sizeof(struct route));
     // printf("msg count=%-8ld  rte count=%-8ld  length=%4d\r",msg_count,unique,length);
     route->update_length = pathattributes_length;

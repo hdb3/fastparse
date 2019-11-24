@@ -5,7 +5,7 @@
 inline static struct route * read_and_clear(uint32_t addrref) {
     // read and clear the push flag
     // if the route changes whilst we are working then a new action will be scheduled
-    uint_fast64_t* p = (uint_fast64_t*) &LOCRIB[addrref];
+    uint_fast64_t* p = (uint_fast64_t*) &LOCRIB[addrref].head;
     uint_fast64_t routeptr = atomic_fetch_and(p,~TOP64);
     return (struct route *) routeptr;
 };

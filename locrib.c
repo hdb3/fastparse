@@ -8,10 +8,15 @@
  *
 */
 
-struct route **LOCRIB=NULL;
+struct locrib_entry *LOCRIB=NULL;
 
 void locrib_init() {
-  LOCRIB = calloc(BIG, sizeof(void*));
+
+  int i; 
+  assert(NULL==LOCRIB);
+  LOCRIB = calloc(BIG, sizeof(struct locrib_entry));
+  for (i=0;i<BIG;i++)
+    pthread_spin_init(&LOCRIB[i].spinlock,PTHREAD_PROCESS_PRIVATE);
   locribj_init();
 };
 
@@ -37,31 +42,44 @@ void locrib_init() {
  * The stored state (per address) is the pushed bit and another bit for the spin lock
 */
 
-void locrib(uint32_t extended_address, struct route *new, bool update) {
+void locrib(uint32_t extended_addrref, struct route *new, bool update) {
 
-  uint32_t address = _LR_INDEX_MASK & extended_address;
-  void* extended_current = LOCRIB[address];
-  struct route * current = CLEAR64(extended_current);
+  // functional overview
+  //
+  // input is addrref (table index) and pointer to a new peer route
+  // (not sure why the 'withdraw' aspect cannot be signalled with 'NULL', but there was a reason i think....) 
+  //
+  // the possible effects are
+  // 1) change in locrib 'head' ( a new winner)
+  // 2) push of this addref into the journal
+  // 3) phase 3 schedule trigger
+  //
+  // conditionalities:
+  // 1) locrib head change is straight forward tiebreak ((implied) withdraw slightly different)
+  // 2) journal push depends on
+  //   a) locrib head change
+  //   b) no previous push flag (this is a locrib_entry field, possibly still a high bit set on the route, but better an atomic bool)
+  // 3) phase 3 schedule trigger depends on all of the above AND the eob (end-of-block flag) set from the adj_rib_in process
 
-  bool eob_flag = _LR_EOB & extended_address;
-  // TODO make LOCRIB an array of uint_fast64_t
-  // (before it becomes an array of some struct)
-  inline bool set_and_check(uint32_t addrref,struct route *new_route) {
-    uint_fast64_t* p = (uint_fast64_t*) &LOCRIB[addrref];
-    uint_fast64_t routeptr = atomic_exchange(p,(uint_fast64_t) new_route);
-    return (TOP64 & routeptr);
-  };
+  uint32_t addrref = _LR_INDEX_MASK & extended_addrref;
+  bool eob_flag = _LR_EOB & extended_addrref;
+  struct route * extended_current = LOCRIB[addrref].head;
+  pthread_spin_lock(&LOCRIB[addrref].spinlock);
 
-  // TODO
-  // combine these two functions
-  inline void push(struct route *route) {
-    bool push_flag = set_and_check(address,SET64(route));
+  inline void push() {
+
+    uint_fast64_t* p = (uint_fast64_t*) &LOCRIB[addrref].head;
+    uint_fast64_t routeptr = atomic_exchange(p,(uint_fast64_t) new);
+    bool push_flag = TOP64 & routeptr;
+
     if (!(push_flag)) {
-      locribj_push(address);
+      locribj_push(addrref);
       if (eob_flag)
         schedule_phase3(0);
     };
   };
+
+  struct route * current = CLEAR64(extended_current);
 
   if (update) {
 
@@ -70,12 +88,11 @@ void locrib(uint32_t extended_address, struct route *new, bool update) {
 #else
     if (1) // this is the 'new always wins tiebreaker - produces maximum churn'
 #endif
-      push(new);
-
-
+      push();
   // process withdraw
   } else {
-     if ( current && current == new) // there is an entry to consider and it is this route
+     if ( current && current == new) // there is an entry in the table AND it matches this route
         push(NULL);
   };
+  pthread_spin_unlock(&LOCRIB[addrref].spinlock);
 };

@@ -2,31 +2,25 @@
 #define __ALLOC_H
 
 #define LARGE (4096 + 128)
-// LARGE_MAX is 1M
+// LARGE_MAX : number of large buffers in the system
 #define LARGE_MAX 1000000LL
 
 #define SMALL (256)
-// SMALL_MAX is 10M
+// SMALL_MAX: number of small buffers in the system
 #define SMALL_MAX 40000000LL
 
-extern void * small_buf;
-extern void * large_buf;
-extern void * large_buf_limit;
+struct cache_line { void ** free ; uint32_t free_count ; };
 
-extern void ** small_free;
-extern void ** large_free;
+struct cache {
+  struct cache_line small;
+  struct cache_line large;
+};
 
-extern uint32_t small_index;
-extern uint32_t large_index;
-
-extern uint32_t small_free_count;
-extern uint32_t large_free_count;
-
-extern void * both_buf;
-
+struct cache * init_cache();
+void reinit_cache(struct cache * cache);
 void init_alloc();
 void reinit_alloc();
-extern inline void dalloc(void *p);
-extern inline void *alloc(size_t sz);
+extern inline void dalloc(struct cache * cache, void *p);
+extern inline void *alloc(struct cache * cache, size_t sz);
 void report_route_table ();
 #endif

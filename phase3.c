@@ -17,19 +17,26 @@ uint64_t propagated_prefixes = 0;
 
 static atomic_bool running=false;
 
+#define EMPTY ((void*) ~(0LL))
 void schedule_phase3(bool hard) {
   uint32_t addrref;
   uint32_t addrreftable [ 4096 ];
   uint16_t table_index;
-  struct route * route1, *route2=NULL;
+  struct route * route1, *route2=EMPTY;
   uint8_t *txp;
    
   if (atomic_flag_test_and_set(&running))
     return;
 
+  // route aggrgation logic:
+  // we can't 'peek' the queue, so we always read till the first prefix of a new block
+  // this means that we have to store the next prefix (unless the journal is empty)
+  // which complicates the first cycle: so we do a pump-priming read before the main loop...
+  //
+  // route1 is the route pre-read: route2 is the one we read next on this cycle....
   if (1) do {
 
-    if (NULL == route2) {
+    if (EMPTY == route2) {
       addrref = locribj_pull();
       if (JOURNAL_EMPTY == addrref)
         break;
@@ -40,12 +47,13 @@ void schedule_phase3(bool hard) {
 
     table_index = 0;
     while (route2 == route1) {
+        assert(table_index<4096);
         addrreftable[table_index++] = addrref;
         addrref = locribj_pull();
         if (JOURNAL_EMPTY != addrref)
           route2 = read_and_clear(addrref);
 	else
-          route2 = NULL;
+          route2 = NULL-1;
     };
   // inner loop complete, either becuase the routes in the stream are now different
   // or the stream is ended
@@ -77,7 +85,7 @@ void schedule_phase3(bool hard) {
       for (pix=0;pix<npeergroups;pix++) {
 	struct peergroup *pg = &peergroups[pix];
         txp = tx_buffer+23;
-        pg->serialize(CLEAR64(route1),&txp,4064);
+        pg->serialize(route1,&txp,4064);
         uint16_t attribute_length = txp - (tx_buffer+23);
         putw16(tx_buffer+21, attribute_length);
         for (index=0; index < table_index; index++)

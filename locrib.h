@@ -7,7 +7,13 @@
 #define _LR_EOB TOP32
 #define _LR_INDEX_MASK 0x7fffffff
 
-extern struct route **LOCRIB;
+
+struct locrib_entry {
+  struct route * head;
+  pthread_spinlock_t spinlock;
+};
+
+extern struct locrib_entry *LOCRIB;
 
 void locrib_init();
 

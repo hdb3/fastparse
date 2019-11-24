@@ -1,226 +1,147 @@
 #include "include.h"
 
-void * small_buf = NULL;
-void * large_buf = NULL;
+// first, define the buffer pools, before the cache, which keeps per peer/thread pools isolated
+
+struct buf_pool {
+  void * buf;
+  uint64_t index;
+  uint64_t index_max;
+  uint32_t alloc_max;
+};
+
+struct pools {
+  struct buf_pool *small;
+  struct buf_pool *large;
+} pools;
+
+#define ISLARGE(ptr) ((void*)ptr>=(void*)pools.large->buf)
+
+void * slab = NULL;
 void * large_buf_limit = NULL;
 
-void ** small_free = NULL;
-void ** large_free = NULL;
-
-uint32_t small_index = 0;
-uint32_t large_index = 0;
-
-uint32_t small_free_count = 0;
-uint32_t large_free_count = 0;
-
-
-#define ISLARGE(ptr) ((void*)ptr>=(void*)large_buf)
-#define LIMITCHECK(ptr) (assert(ptr >= small_buf && ptr < large_buf_limit ))
-
-// pointer checks
-// 0 - check if null
-// 1 - check if in entire range
-// 2 - workout if small or large, and set parameters accordingly (buf and size)
-// 3 - check alignment ( 0 == (buf-base) % size )
-// errors are (1) range check (2) alignment check
-// report (1) value, low high
-// report (2) value
-//
-//
-static inline int _checkptr(void* p, void* low, void* high, size_t size, int null_allowed, int non_stop) {
-
-  if ( p ) {
-    if (p<low)
-      printf("\nlimit check low %p %p\n",p,low);
-    else if (p>high)
-      printf("\nlimit check high %p %p\n",p,high);
-    else if ( (p-low) % size)
-      printf("\nalignment check %p %p %ld\n",p,low,size);
-    else
-      return 0;
-  } else if (null_allowed)
-    return 0;
-  else
-    printf("\nnull check %p\n",p);
-
-  if (non_stop)
-    return 1;
-
-  fflush(stdout);
-  assert(0);
+struct buf_pool * init_pool(uint32_t alloc_max, int32_t index_max) {
+  struct buf_pool *pool = calloc(sizeof(struct buf_pool),1);
+  pool->buf = slab;
+  slab += index_max * alloc_max;
+  pool->index_max = index_max;
+  pool->alloc_max = alloc_max;
+  return pool;
 };
-#ifdef DEBUG
-#define CHECKL(ptr) (_checkptr(ptr,large_buf,large_buf + (LARGE-1) * LARGE_MAX,LARGE,0,0))
-#define CHECKLN(ptr) (_checkptr(ptr,large_buf,large_buf + (LARGE-1) * LARGE_MAX,LARGE,1,0))
-#define CHECKLC(ptr) (_checkptr(ptr,large_buf,large_buf + (LARGE-1) * LARGE_MAX,LARGE,1,1))
-#define CHECKS(ptr) (_checkptr(ptr, small_buf, small_buf + (SMALL-1) * SMALL_MAX,SMALL,0,0))
-#define CHECKSN(ptr) (_checkptr(ptr,small_buf,small_buf + (SMALL-1) * SMALL_MAX,SMALL,1,0))
-#define CHECKSC(ptr) (_checkptr(ptr,small_buf,small_buf + (SMALL-1) * SMALL_MAX,SMALL,1,1))
-#define CHECK(ptr) if (ISLARGE(ptr)) CHECKL(ptr); else CHECKS(ptr)
-#else
-#define CHECKL(ptr) ;
-#define CHECKLN(ptr) ;
-#define CHECKLC(ptr) 0
-#define CHECKS(ptr) ;
-#define CHECKSN(ptr) ;
-#define CHECKSC(ptr) 0
-#define CHECK(ptr) ;
-#endif
 
-void * both_buf;
+void reinit_pool(struct buf_pool * pool) {
+  pool->index = 0;
+};
 
-void free_check_large() {
+void init_pools() {
+  slab = mmap(NULL, SMALL * SMALL_MAX + LARGE * LARGE_MAX, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  assert(MAP_FAILED != slab);
+  pools.small = init_pool(SMALL , SMALL_MAX);
+  pools.large = init_pool(LARGE , LARGE_MAX);
+  assert(pools.large->buf > pools.small->buf); // this is a given as we carve both pools from the same slab, in order.
+  large_buf_limit = slab;
+};
 
-  void *p = large_free;
-  void * from = NULL;
-  int depth = 0;
-  while (NULL != p) {
-    depth++;
-    assert(depth<=large_free_count);
-    if (CHECKLC(p)) {
-      printf("free_check_large depth %d/%d from %p\n",depth,large_free_count,from);
-      fflush(stdout);
-      assert(0);
-    };
-    from = p;
-    p = * (void**) p;
+void reinit_pools() {
+  reinit_pool(pools.small);
+  reinit_pool(pools.large);
+};
+
+static inline void * pool_alloc(struct buf_pool *buf_pool) {
+  uint_fast64_t index = atomic_fetch_add(&(buf_pool->index),1);
+  assert (index < buf_pool->index_max);
+  return buf_pool->buf + ( buf_pool->alloc_max * index);
+};
+
+static inline void * __pool_alloc(struct buf_pool *buf_pool) {
+  struct buf_pool * rval;
+  assert (buf_pool->index < buf_pool->index_max);
+  // LOCKPOOL;
+  rval = buf_pool->buf + ( buf_pool->alloc_max * (buf_pool->index++));
+  // UNLOCKPOOL;
+  return rval;
+};
+
+// below is the cache structure used to localise most buffer de/allocation
+
+// struct defs in alloc.h
+// struct cache_line { void ** free ; uint32_t free_count ; };
+
+// struct cache {
+  // struct cache_line small;
+  // struct cache_line large;
+// };
+
+struct cache * init_cache() {
+  return calloc(sizeof(struct cache),1); 
+};
+
+void reinit_cache(struct cache * cache) {
+  memset(cache,0,sizeof(struct cache));
+};
+
+static inline void *alloc_cache_line(struct cache_line *cl) {
+  void * p = NULL;
+  if (cl->free) {
+    p = cl->free;
+    cl->free = * cl->free;
+    cl->free_count--;
   };
-  assert(depth==large_free_count);
-};
-
-void free_check_small () {
-  void *p = small_free;
-  void * from = NULL;
-  int depth = 0;
-  while (NULL != p) {
-    depth++;
-    if (CHECKSC(p)) {
-      printf("free_check_small depth %d/%d from %p\n",depth,small_free_count,from);
-      fflush(stdout);
-      assert(0);
-    } else
-    ;
-    from = p;
-    p = * (void**) p;
-    assert(depth<=small_free_count);
-  };
-  assert(depth==small_free_count);
-};
-
-// ### start small code to mirror for large
-
-void reinit_alloc_small() {
-  small_index = 0;
-  small_free = NULL;
-  small_free_count = 0;
-};
-
-static inline void *alloc_small() {
-  void * p;
-  CHECKSN(small_free);
-  if (small_free) {
-    CHECKS(small_free);
-
-    p = small_free;
-    small_free = * small_free;
-    small_free_count--;
-
-    CHECKSN(small_free);
-  } else if (small_index < SMALL_MAX) {
-    p = small_buf + SMALL * (small_index++);
-  } else
-    assert (small_index < SMALL_MAX);
-  CHECKS(p);
   return p;
 };
 
-static inline void dalloc_small(void *p) {
-  CHECKSN(small_free);
-
-  if (small_free) {
-    *(void**) p = small_free;
-    small_free = p;
+static inline void dalloc_cache_line(struct cache_line *cl, void *p) {
+  if (cl->free) {
+    *(void**) p = cl->free;
+    cl->free = p;
   } else {
-    small_free = p;
+    cl->free = p;
     *(void**) p = NULL;
   };
-  small_free_count++;
-
-  CHECKS(small_free);
+  cl->free_count++;
 };
 
-// ### end small code to mirror for large
-
-// ############# large mirror of small
-
-void reinit_alloc_large() {
-  large_index = 0;
-  large_free = NULL;
-  large_free_count = 0;
+void dalloc(struct cache * cache, void *p) {
+  if (ISLARGE(p))
+    dalloc_cache_line(&(cache->large),p);
+  else
+    dalloc_cache_line(&(cache->small),p);
 };
 
-static inline void *alloc_large() {
-  void *p;
-
-  if (large_free) {
-    CHECKL(large_free);
-    CHECKLN(*large_free);
-    p = large_free;
-    large_free = *large_free;
-    large_free_count--;
-  } else if (large_index < LARGE_MAX) {
-    p = large_buf + LARGE * (large_index++);
-  } else
-    assert (large_index < LARGE_MAX);
-
-  CHECKL(p);
+static inline void *alloc_small(struct cache * cache) {
+  void * p = alloc_cache_line(&(cache->small));
+  if (NULL==p)
+    p = pool_alloc(pools.small);
+  assert (p);
   return p;
 };
 
-static inline void dalloc_large(void *p) {
-  CHECKLN(large_free);
-  if (large_free) {
-    *(void**)p = large_free;
-    large_free = p;
-  } else {
-    large_free = p;
-    *(void**)p = NULL;
-  };
-  large_free_count++;
-  CHECKL(large_free);
+static inline void *alloc_large(struct cache * cache) {
+  void * p = alloc_cache_line(&(cache->large));
+  if (NULL==p)
+    p = pool_alloc(pools.large);
+  assert (p);
+  return p;
 };
 
-// ############# end of large mirror of large
+void *alloc(struct cache * cache, size_t sz) {
+  assert(LARGE >= sz);
+  if (SMALL < sz)
+    return alloc_large(cache);
+  else
+    return alloc_small(cache);
+};
 
 void init_alloc() {
-  both_buf = mmap(NULL, SMALL * SMALL_MAX + LARGE * LARGE_MAX, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  assert(MAP_FAILED != both_buf);
-  small_buf = both_buf;
-  large_buf = both_buf + SMALL * SMALL_MAX;
-  large_buf_limit = large_buf + LARGE * LARGE_MAX;
+   init_pools();
+   // gcache = init_cache();
 };
 
 void reinit_alloc() {
-  reinit_alloc_large();
-  reinit_alloc_small();
-};
-
-void dalloc(void *p) {
-  LIMITCHECK(p);
-  if (ISLARGE(p))
-    dalloc_large(p);
-  else
-    dalloc_small(p);
-};
-
-void *alloc(size_t sz) {
-  assert(LARGE >= sz);
-  if (SMALL < sz)
-    return alloc_large();
-  else
-    return alloc_small();
+   reinit_pools();
+   // reinit_cache(gcache);
 };
 
 void report_route_table () {
-  printf("route table size = %d (%d/%d)\n", small_index + large_index, small_index, large_index);
+  printf("route table size = unreliable\n");
+  // printf("route table size = %d (%d/%d)\n", small_index + large_index, small_index, large_index);
 };

@@ -8,6 +8,6 @@
 // static uint32_t jread,jwrite;
 
 extern inline void locribj_init();
-extern inline void locribj_push(uint32_t address);
+extern inline void locribj_push(uint32_t addrref);
 extern inline uint32_t locribj_pull();
 #endif

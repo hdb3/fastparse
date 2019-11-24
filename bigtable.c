@@ -55,7 +55,11 @@ void reinit_bigtable() {
   memset(bigtable, 0, 4 * BIG);
 };
 
+pthread_spinlock_t spinlock_bt;
+#define LOCKBT pthread_spin_lock(&spinlock_bt);
+#define UNLOCKBT pthread_spin_unlock(&spinlock_bt);
 void init_bigtable() {
+  pthread_spin_init(&spinlock_bt,PTHREAD_PROCESS_PRIVATE);
   bigtable_index = 0;
   RIB = calloc(4, RIBSIZE);
   bigtable = calloc(4, BIG);
@@ -83,13 +87,41 @@ uint64_t lookup_bigtable(uint32_t index) {
 
 uint32_t lookup_RIB(uint8_t l, uint32_t address) {
 
+  // concurrency concerns:
+  //   race on empty slot - 
+  //     1) we must protect both the cursor and the slot content after cursor is acquired
+  //     this not obviously a simple atomic action....
+  //     one simple strategy is a fast (global) lock
+  //     an alternate is an atomic test and set first on the slot content, using a fixed canary value,
+  //     then acquiring the next cursor value, atomically, and inserting (non atomically).
+  //     if a second thread reads the canary value it knows that it arrived in an update cycle by a, possibly lower priority, thread
+  //     this is problematic since yielding won't gurantee that the other thread will complete its work immediately and write a valid
+  //     index (else why is it already suspended?)
+  //     however, this eventuality may be impossible to reach, and the real threat simply the atomic upfdet of the cursor
+  //     i will protect agsint this unlikely eventuality with an assertion that the canary is never seen...  
+  //     an dsimply make the cursor update atomic
+
+
+// TODO index is an alias for addrref - change thus to make consisntent usage....
   uint32_t index = encode(l, address);
   assert(index < RIBSIZE);
   uint32_t btindex = RIB[index];
+  /* old, simple code
   if (0 == btindex) {
     btindex = bigtable_index++;
     RIB[index] = btindex;
     bigtable[btindex] = index;
+  };
+  */
+
+  /* new, simple code, uses a lock
+  */
+  if (0 == btindex) {
+    LOCKBT;
+    btindex = bigtable_index++;
+    RIB[index] = btindex;
+    bigtable[btindex] = index;
+    UNLOCKBT;
   };
   return btindex;
 };
