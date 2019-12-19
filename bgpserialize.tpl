@@ -13,6 +13,7 @@ void __BODY__ (struct route *route, uint8_t ** q_base , uint16_t q_max ) {
   uint8_t *attr_ptr;
 
   inline void set (uint16_t attr_length, uint8_t flags, uint8_t type_code, uint8_t *attr_ptr) {
+    assert(attr_ptr);
     if (attr_length<256) {
       *q++ = flags & ~0x10;
       *q++ = type_code;

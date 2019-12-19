@@ -63,36 +63,39 @@ void locrib(uint32_t extended_addrref, struct route *new, bool update) {
 
   uint32_t addrref = _LR_INDEX_MASK & extended_addrref;
   bool eob_flag = _LR_EOB & extended_addrref;
-  struct route * extended_current = LOCRIB[addrref].head;
-  pthread_spin_lock(&LOCRIB[addrref].spinlock);
+  bool push_flag;
+  struct locrib_entry * lre = &LOCRIB[addrref];
 
   inline void push() {
-
-    uint_fast64_t* p = (uint_fast64_t*) &LOCRIB[addrref].head;
-    uint_fast64_t routeptr = atomic_exchange(p,(uint_fast64_t) new);
-    bool push_flag = TOP64 & routeptr;
-
-    if (!(push_flag)) {
-      locribj_push(addrref);
-      if (eob_flag)
-        schedule_phase3(0);
-    };
+    push_flag = lre->push_flag;
+    lre->push_flag = true;
+    lre->head = new;
   };
 
-  struct route * current = CLEAR64(extended_current);
+  pthread_spin_lock(&lre->spinlock);
 
-  if (update) {
+  do {
+    struct route * current = lre->head;
+    if (update) {
 
 #ifndef NEWWINS
-    if ( NULL == current || tiebreaker(&new->tiebreak,&current->tiebreak))
+      if ( NULL == current || tiebreaker(&new->tiebreak,&current->tiebreak))
 #else
-    if (1) // this is the 'new always wins tiebreaker - produces maximum churn'
+      if (1) // this is the 'new always wins tiebreaker - produces maximum churn'
 #endif
-      push();
+        push();
   // process withdraw
-  } else {
-     if ( current && current == new) // there is an entry in the table AND it matches this route
-        push(NULL);
+    } else {
+       if ( current && current == new) // there is an entry in the table AND it matches this route
+          push(NULL);
+    };
+  } while (0);
+
+  pthread_spin_unlock(&lre->spinlock);
+
+  if (!(push_flag)) {
+    locribj_push(addrref);
+    if (eob_flag)
+      schedule_phase3(0);
   };
-  pthread_spin_unlock(&LOCRIB[addrref].spinlock);
 };
