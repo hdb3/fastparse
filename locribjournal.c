@@ -51,26 +51,26 @@ void locribj_init() {
 void locribj_push(uint32_t addrref){
   // add a journal entry for this address
   // printf("push %d\n",addrref);
+  LOCKLRJ;
   assert(JOURNAL_EMPTY != addrref);
   // printf("jpush - [%d] = %x\n",jwrite,addrref);
-  LOCKLRJ;
   _LRJOURNAL[jwrite++] = addrref;
   jwrite = jwrite % BIG;
-  UNLOCKLRJ;
   assert(jwrite != jread);  // that would mean the buffer overran
+  UNLOCKLRJ;
 };
 
 uint32_t locribj_pull() {
   // get a journal entry
   uint32_t rval;
+  LOCKLRJ;
   if (jwrite != jread) {
     // printf("jpull - [%d] = %x\n",jread,_LRJOURNAL[jread]);
-    LOCKLRJ;
     rval = _LRJOURNAL[jread++];
     jread = jread % BIG;
-    UNLOCKLRJ;
   } else
     rval = JOURNAL_EMPTY;
   // printf("pull %d\n",rval);
+  UNLOCKLRJ;
   return rval;
 };

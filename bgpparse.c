@@ -165,6 +165,11 @@ int buf_parse_peer(struct peer *peer) {
   limit = ptr + peer->length;
 
   while (ptr < limit && ( msg_max == 0 || msg_count < msg_max)) {
+    // DEBUG
+    if (0 != memcmp(marker, ptr, 16)) {
+       printf("invalid marker at %p[base+%ld] (%d)\n", ptr, ptr - peer->base, msg_count);
+    };
+    // END DEBUG
     assert(0 == memcmp(marker, ptr, 16));
     msg_length = getw16(ptr + 16);
     msg_type = getw8(ptr + 18);
@@ -201,7 +206,7 @@ void split_buf(int n, struct buf *buf, void *base, int64_t length) {
   for (p=0;p<n;p++){
     buf[p].base = base+offset;
     offset = (p+1) * length / n;
-    printf("pn %d limit %ld  start %ld",p,limit,offset);  
+    printf("\npn %d limit %ld  start %ld",p,limit,offset);  
     mark_count = 0;
     while (offset>limit) {
       if (0xff != *(uint8_t*)(base+offset))
@@ -214,9 +219,10 @@ void split_buf(int n, struct buf *buf, void *base, int64_t length) {
     };
     assert(16==mark_count);
     buf[p].length = base+offset - buf[p].base;
-  printf("  top %ld",offset);
-  printf("  %d:[%p,%ld]\n",p,buf[p].base,buf[p].length);
+    printf("  top %ld",offset);
+    printf("  %d:[%p,%ld]",p,buf[p].base,buf[p].length);
   };
+  printf("\n");  
 };
 
 int buf_parse(void *base, int64_t length) {
