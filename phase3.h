@@ -15,6 +15,7 @@ inline static struct route * read_and_clear(uint32_t addrref) {
   return rval;
 };
 
+extern void init_phase3();
 extern inline void schedule_phase3(bool hard);
 extern uint64_t propagated_prefixes;
 #endif

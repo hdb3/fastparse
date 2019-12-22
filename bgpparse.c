@@ -89,8 +89,11 @@ static inline void parse_update(struct peer* peer,void *p, uint16_t length) {
     route->update_length = pathattributes_length;
     memcpy((void*)route + sizeof(struct route), path_attributes, pathattributes_length);
     route->unique = unique++;
+    // phase1() fills in the route struct with the perr static fields
     phase1(peer, &route);
+    // parse_attributes() fills in the route struct with the path attribute derived fields
     parse_attributes(path_attributes, pathattributes_length, route);
+    // arguably these two could be combined into one function in one file.....
   };
 
   if (nlri_length) {
@@ -134,6 +137,7 @@ void init() {
   init_bigtable();
   init_peers();
   init_peergroups();
+  init_phase3();
 };
 
 void reinit() {
@@ -240,15 +244,22 @@ int buf_parse(void *base, int64_t length) {
     struct peer *peer = peers+pn;
     peer->base = bufs[pn].base;
     peer->length = bufs[pn].length;
+#ifndef MULTITHREAD
     // msg_count = buf_parse_peer(peer); // this is the non-threaded version
     pthread_create(&(peer->thread_id), NULL, (void*)buf_parse_peer, (void*) peer);
+    assert(0 == pthread_join(peer->thread_id,(void**)&msg_count));
+#else
+    pthread_create(&(peer->thread_id), NULL, (void*)buf_parse_peer, (void*) peer);
+#endif
     // assert(0 == pthread_join(peer->thread_id,(void**)&msg_count));
   };
 
+#ifdef MULTITHREAD
   for (pn=0;pn<npeers;pn++) {
     struct peer *peer = peers+pn;
     assert(0 == pthread_join(peer->thread_id,(void**)&msg_count));
   };
+#endif
 
   schedule_phase3(1);  // hard force to flush unfinished work
 

@@ -15,7 +15,12 @@ static uint8_t tx_buffer[8192] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0
 static int over_length_detected = 0;
 uint64_t propagated_prefixes = 0; 
 
-static atomic_bool running=false;
+static pthread_spinlock_t phase3_spinlock;
+static int phase3_debug = 0;
+
+void init_phase3() {
+  pthread_spin_init(&phase3_spinlock,PTHREAD_PROCESS_PRIVATE);
+};
 
 #define EMPTY ((void*) ~(0LL))
 void schedule_phase3(bool hard) {
@@ -25,8 +30,9 @@ void schedule_phase3(bool hard) {
   struct route * route1, *route2=EMPTY;
   uint8_t *txp;
    
-  if (atomic_flag_test_and_set(&running))
+  if (EBUSY == pthread_spin_trylock(&phase3_spinlock))
     return;
+  assert(0==phase3_debug++);
 
   // route aggrgation logic:
   // we can't 'peek' the queue, so we always read till the first prefix of a new block
@@ -115,5 +121,6 @@ void schedule_phase3(bool hard) {
       };
     };
   } while (JOURNAL_EMPTY != addrref);
-  atomic_flag_clear(&running);
+  assert(1==phase3_debug--);
+  pthread_spin_unlock(&phase3_spinlock);
 };
